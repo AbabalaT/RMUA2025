@@ -1,0 +1,9 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_1" args="0 0 0 0 0 0 map camera_init 10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_2" args="0 0 0 0 0 0 aft_mapped base_link 10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_3" args="0 0 0 0 0 0 base_link livox 10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_4" args="0 0 0 0 0 0 base_link front_left_eye 10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_5" args="0 0 0 0 0 0 base_link front_right_ege 10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_debug_1" args="0 0 0 0 0 0 camera_init aft_mapped 10" />
+<!--     <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_4" args="0 0 0.1 0 0 0 base_link livox_frame 10" /> -->
+</launch>
