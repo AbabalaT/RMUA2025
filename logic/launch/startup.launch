@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="EnableRviz" default="False"/>
-    <group if="$(eval arg('EnableRviz') == True)">
+    <arg name="Rviz" default="False"/>
+    <group if="$(eval arg('Rviz') == True)">
         <node name="rviz" pkg="rviz" type="rviz" args="-d $(find logic)/rviz/view1.rviz"/>
     </group>
 <!-- 	<include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch"/> -->
@@ -10,6 +10,7 @@
 <!--     <include file="$(find yolov5_ros)/launch/yolov5.launch"/> -->
 <!--     <include file="$(find project2plane)/launch/projection.launch"/> -->
     <include file="$(find localize_startup)/launch/static_tf.launch"/>
+    <include file="$(find basic_control)/launch/basic_control.launch"/>
 <!--     <include file="$(find pcl2process)/launch/pcl2pro.launch"/> -->
 <!--     <include file="$(find move_controller)/launch/move_base.launch"/> -->
 </launch>

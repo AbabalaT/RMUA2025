@@ -10,6 +10,7 @@ project(basic_dev)
 set(OpenCV_DIR /usr/lib/x86_64-linux-gnu/cmake/opencv4/)
 set(pcl_conversions_DIR /usr/local/share/pcl_conversions/cmake)
 set(pcl_ros_DIR /usr/local/share/pcl_ros/cmake)
+
 find_package(catkin REQUIRED COMPONENTS
 airsim_ros
 message_generation

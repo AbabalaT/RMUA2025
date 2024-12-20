@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="basic_control" type="basic_control_node" name="drone_1_basic_control" output="screen" respawn="true">
+<!--         <remap from="pointcloud2_in" to="/cloud_registered"/> -->
+<!--         <remap from="pointcloud2_out" to="/cloud_livox_obs" /> -->
+<!--         <remap from="hight_image" to="/obs_image" /> -->
+    </node>
+</launch>
