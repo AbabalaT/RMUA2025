@@ -69,18 +69,18 @@ float kalman_yaw(float measure){
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 12.5;
-    mat_pid[0][2] = 1.0;
-	mat_pid[0][3] = 10.0;
+	mat_pid[0][1] = 8.0;
+    mat_pid[0][2] = 0.075;
+	mat_pid[0][3] = 2.0;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 12.5f;//697.6f;
-	mat_pid[1][2] = 1.0;
-	mat_pid[1][3] = 10.0;
+	mat_pid[1][1] = 8.0f;//697.6f;
+	mat_pid[1][2] = 0.075;
+	mat_pid[1][3] = 2.0;
 	
 	mat_pid[2][0] = 0.0;
-	mat_pid[2][1] = 100.0f;//139.53f;
-	mat_pid[2][2] = 12.0f;
+	mat_pid[2][1] = 30.0f;//139.53f;
+	mat_pid[2][2] = 10.0f;
 	mat_pid[2][3] = 50.0;
 	
 	angle_pid_mat[0][0] = 2.0;
@@ -405,10 +405,10 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     gyro_data[1] = msg->angular_velocity.y;
     gyro_data[2] = msg->angular_velocity.z;
     if(ctrl_mode == 0 and rc_mode == 1){
-		target_velocity_roll = rc_channel[0] * 0.005;
-		target_velocity_pitch = rc_channel[1] * 0.005;
-		target_velocity_yaw = rc_channel[3] * -0.005;
-        throttle_set = (rc_channel[2] / 2.0 + 500.0)/500.0;
+		target_velocity_roll = rc_channel[0] * 0.004;
+		target_velocity_pitch = rc_channel[1] * 0.004;
+		target_velocity_yaw = rc_channel[3] * -0.004;
+        throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
     }
 
     imu_roll = gyro_data[0];
