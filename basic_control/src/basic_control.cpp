@@ -69,19 +69,19 @@ float kalman_yaw(float measure){
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 8.0;
-    mat_pid[0][2] = 0.075;
-	mat_pid[0][3] = 2.0;
+	mat_pid[0][1] = 40.0;
+    mat_pid[0][2] = 25.0;
+	mat_pid[0][3] = 5.0;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 8.0f;//697.6f;
-	mat_pid[1][2] = 0.075;
-	mat_pid[1][3] = 2.0;
+	mat_pid[1][1] = 40.0f;//697.6f;
+	mat_pid[1][2] = 25.0;
+	mat_pid[1][3] = 5.0;
 	
 	mat_pid[2][0] = 0.0;
-	mat_pid[2][1] = 30.0f;//139.53f;
-	mat_pid[2][2] = 10.0f;
-	mat_pid[2][3] = 50.0;
+	mat_pid[2][1] = 100.0f;//139.53f;
+	mat_pid[2][2] = 55.0f;
+	mat_pid[2][3] = 16.0;
 	
 	angle_pid_mat[0][0] = 2.0;
 	angle_pid_mat[0][1] = 0.0f;//0.00006;//232.55f;
@@ -109,16 +109,16 @@ float pid_roll(float target, float real){
 	error = target - real;
 	sum = sum + error;
 
-	if(sum > 1000.0f){
-		sum = 1000.0;
+	if(sum > 10000.0f){
+		sum = 10000.0;
 	}
-	if(sum < -1000.0f){
-		sum = -1000.0;
+	if(sum < -10000.0f){
+		sum = -10000.0;
 	}
-	if(error > 3.14f){
+	if(error > 10.0f){
 		sum = 0.0f;
 	}
-	if(error < -3.14f){
+	if(error < -10.0f){
 		sum = 0.0f;
 	}
 	if(throttle_set < 0.010f){
@@ -150,16 +150,16 @@ float pid_pitch(float target, float real){
 	error = target - real;
 	sum = sum + error;
 
-	if(sum > 1000.0f){
-		sum = 1000.0;
+	if(sum > 10000.0f){
+		sum = 10000.0;
 	}
-	if(sum < -1000.0f){
-		sum = -1000.0;
+	if(sum < -10000.0f){
+		sum = -10000.0;
 	}
-	if(error > 3.14f){
+	if(error > 7.2f){
 		sum = 0.0f;
 	}
-	if(error < -3.14f){
+	if(error < -7.2f){
 		sum = 0.0f;
 	}
 	if(throttle_set < 0.010f){
@@ -190,18 +190,18 @@ float pid_yaw(float target, float real){
 	error = target - real;
 	sum = sum + error;
 
-	if(sum > 1000.0f){
-		sum = 1000.0;
+	if(sum > 10000.0f){
+		sum = 10000.0;
 	}
-	if(sum < -1000.0f){
-		sum = -1000.0;
+	if(sum < -10000.0f){
+		sum = -10000.0;
 	}
-	if(error > 3.14f){
-		sum = 0.0f;
-	}
-	if(error < -3.14f){
-		sum = 0.0f;
-	}
+//	if(error > 30.0f){
+//		sum = 0.0f;
+//	}
+//	if(error < -30.0f){
+//		sum = 0.0f;
+//	}
 	if(throttle_set < 0.010f){
 		sum = 0.0f;
 	}
@@ -373,10 +373,10 @@ int main(int argc, char** argv){
 }
 
 BasicControl::BasicControl(ros::NodeHandle *nh){
-  pwm_cmd.rotorPWM0 = 0.1;
-  pwm_cmd.rotorPWM1 = 0.1;
-  pwm_cmd.rotorPWM2 = 0.1;
-  pwm_cmd.rotorPWM3 = 0.1;
+	pwm_cmd.rotorPWM0 = 0.1;
+	pwm_cmd.rotorPWM1 = 0.1;
+	pwm_cmd.rotorPWM2 = 0.1;
+	pwm_cmd.rotorPWM3 = 0.1;
 
   rc_channel1_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc1", 1, std::bind(&BasicControl::channel1_callback, this, std::placeholders::_1));
   rc_channel2_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc2", 1, std::bind(&BasicControl::channel2_callback, this, std::placeholders::_1));
@@ -384,9 +384,17 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
   rc_channel4_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc4", 1, std::bind(&BasicControl::channel4_callback, this, std::placeholders::_1));
   rc_channel5_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc5", 1, std::bind(&BasicControl::channel5_callback, this, std::placeholders::_1));
   rc_channel6_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc6", 1, std::bind(&BasicControl::channel6_callback, this, std::placeholders::_1));
+  pose_suber = nh->subscribe<geometry_msgs::PoseStamped>("/airsim_node/drone_1/debug/pose_gt", 1, std::bind(&BasicControl::poseCallback, this, std::placeholders::_1));//TODO(change to estimated pose)
   nh->setParam("/custom_debug/rc_mode", 1);//TODO(change to 0 later)
   imu_suber = nh->subscribe<sensor_msgs::Imu>("/airsim_node/drone_1/imu/imu", 1, std::bind(&BasicControl::imuCallback, this, std::placeholders::_1));
   pwm_publisher = nh->advertise<airsim_ros::RotorPWM>("/airsim_node/drone_1/rotor_pwm_cmd", 1);
+
+  	rate_x_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_x", 10);
+	rate_y_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_y", 10);
+	rate_z_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_z", 10);
+	rate_x_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_x", 10);
+	rate_y_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_y", 10);
+	rate_z_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_z", 10);
 
   rc_mode_timer = nh->createTimer(ros::Duration(0.2), std::bind(&BasicControl::rc_mode_check_callback, this, std::placeholders::_1));
 
@@ -394,6 +402,19 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
 }
 
 BasicControl::~BasicControl(){}
+
+void BasicControl::poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+	measure_quaternion.w = msg->pose.orientation.w;
+    measure_quaternion.x = msg->pose.orientation.x;
+    measure_quaternion.y = msg->pose.orientation.y;
+   	measure_quaternion.z = msg->pose.orientation.z;
+	float measure_yaw = 0.0f;
+    measure_yaw = atan2(2.0 * (measure_quaternion.w * measure_quaternion.z + measure_quaternion.x + measure_quaternion.y),
+                            measure_quaternion.w * measure_quaternion.w - measure_quaternion.x * measure_quaternion.x
+                                - measure_quaternion.y * measure_quaternion.y + measure_quaternion.z * measure_quaternion.z);
+    measure_yaw = measure_yaw * 180.0 / 3.14159265359;
+    std::cout << "measure_yaw: " << measure_yaw << std::endl;
+}
 
 void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
@@ -456,9 +477,21 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	pwm_cmd.rotorPWM1 = rear_left_speed;
 	pwm_cmd.rotorPWM2 = front_left_speed;
 	pwm_cmd.rotorPWM3 = rear_right_speed;
-
 	pwm_publisher.publish(pwm_cmd);
 
+//	std_msgs::Float32 rate_msg;
+//	rate_msg.data = roll_in;
+//	rate_x_real_publisher.publish(rate_msg);
+//    rate_msg.data = pitch_in;
+//    rate_y_real_publisher.publish(rate_msg);
+//    rate_msg.data = yaw_in;
+//    rate_z_real_publisher.publish(rate_msg);
+//    rate_msg.data = target_velocity_roll;
+//    rate_x_target_publisher.publish(rate_msg);
+//    rate_msg.data = target_velocity_pitch;
+//    rate_y_target_publisher.publish(rate_msg);
+//    rate_msg.data = target_velocity_yaw;
+//    rate_z_target_publisher.publish(rate_msg);
 }
 
 void BasicControl::channel1_callback(const std_msgs::Float32::ConstPtr& msg){
