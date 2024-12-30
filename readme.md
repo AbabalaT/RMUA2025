@@ -28,3 +28,7 @@ RosParam:是否遥控
 
 遥控程序启动后修改param
 其他程序作出反映
+
+TODO:
+    lidar imu 標定
+    imu 方差測量

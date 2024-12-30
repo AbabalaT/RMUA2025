@@ -1,9 +1,8 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_1" args="0 0 0 0 0 0 map camera_init 50" />
-    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_2" args="0 0 0 0 0 0 aft_mapped base_link 50" />
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_1" args="0 0 0 3.14159265359 0 0 odom camera_init 1" />
+    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_2" args="0 0 0 3.14159265359 0 0 body base_link 50" />
     <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_3" args="0 0 0 0 0 0 base_link lidar 50" />
     <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_4" args="0 0 0 0 0 0 base_link front_left_eye 50" />
     <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_5" args="0 0 0 0 0 0 base_link front_right_ege 50" />
-    <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_debug_1" args="0 0 0 0 0 0 camera_init aft_mapped 50" />
-<!--     <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_4" args="0 0 0.1 0 0 0 base_link livox_frame 10" /> -->
+<!--     <node pkg="tf" type="static_transform_publisher" name="map_tf_broadcaster_debug_1" args="0 0 0 0 0 0 camera_init aft_mapped 50" /> -->
 </launch>
