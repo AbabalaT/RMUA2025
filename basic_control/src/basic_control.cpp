@@ -499,10 +499,15 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
 BasicControl::~BasicControl(){}
 
 void BasicControl::poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-	measure_quaternion.w = msg->pose.orientation.w;
-    measure_quaternion.x = msg->pose.orientation.x;
-    measure_quaternion.y = msg->pose.orientation.y;
-   	measure_quaternion.z = msg->pose.orientation.z;
+
+}
+
+void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
+{
+    measure_quaternion.w = msg->orientation.w;
+    measure_quaternion.x = msg->orientation.x;
+    measure_quaternion.y = msg->orientation.y;
+   	measure_quaternion.z = msg->orientation.z;
 	float measure_yaw = 0.0f;
     measure_yaw = atan2(2.0 * (measure_quaternion.w * measure_quaternion.z + measure_quaternion.x * measure_quaternion.y),
 		1.0 - 2.0 * (measure_quaternion.y * measure_quaternion.y + measure_quaternion.z * measure_quaternion.z));
@@ -570,14 +575,7 @@ void BasicControl::poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 			target_velocity_yaw = -3.0f;
 		}
     }
-}
 
-void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
-{
-//  ROS_INFO("Received IMU data:");
-//  ROS_INFO("Linear Acceleration: [x: %f, y: %f, z: %f]", msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-//  ROS_INFO("Angular Velocity: [x: %f, y: %f, z: %f]", msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
-//  ROS_INFO("Orientation: [x: %f, y: %f, z: %f, w: %f]", msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
 	gyro_data[0] = msg->angular_velocity.x;
     gyro_data[1] = msg->angular_velocity.y;
     gyro_data[2] = msg->angular_velocity.z;
