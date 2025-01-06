@@ -13,7 +13,7 @@
       <param name="world_frame" value="odom"/>
 <!--       <param name="base_link_frame_output" value="ekf_output"/> -->
 
-      <param name="odom0" value="/ekf/uwb"/>
+      <param name="odom0" value="real_pose_odom"/>
 <!--       <param name="odom1" value="/ekf/lio"/> -->
       <param name="imu0" value="/ekf/imu_now"/>
 

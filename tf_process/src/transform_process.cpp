@@ -59,6 +59,18 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
     trans.transform.translation.z = 0;
     br.sendTransform(trans);
 
+    trans.header.frame_id = "map";
+    trans.child_frame_id = "odom_map";
+    trans.header.stamp = ros::Time::now();
+    trans.transform.rotation.x = 0;
+    trans.transform.rotation.y = 0;
+    trans.transform.rotation.z = 0;
+    trans.transform.rotation.w = 1;
+    trans.transform.translation.x = 0;
+    trans.transform.translation.y = 0;
+    trans.transform.translation.z = 0;
+    br.sendTransform(trans);
+
 
 
     geometry_msgs::TransformStamped base2map;

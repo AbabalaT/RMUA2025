@@ -32,6 +32,7 @@ RosParam:是否遥控
 TODO:
     lidar imu 標定
     imu 方差測量
+    lidar缩放比例标定
 
 FAST-LIO sensor set ros::time
 IMU sensor set ros::time 

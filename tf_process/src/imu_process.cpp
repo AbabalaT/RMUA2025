@@ -39,6 +39,8 @@ KalmanState kf_x;
 KalmanState kf_y;
 KalmanState kf_z;
 
+tf2::Quaternion ned2enu_quat;
+
 float real_world_v_x, real_world_v_y, real_world_v_z;
 float real_world_acc_x, real_world_acc_y, real_world_acc_z;
 float real_world_pre_v_x, real_world_pre_v_y, real_world_pre_v_z;
@@ -105,6 +107,8 @@ ros::Publisher lio_pub;
 ros::Publisher real_pose_pub;
 ros::Publisher pcl_pub;
 
+
+
 float init_pose_x, init_pose_y, init_pose_z;
 
 typedef struct {
@@ -163,14 +167,30 @@ void rotateVectorByQuaternion(Quaternion q, float v[3], float result[3]) {
 
 Quaternion init_quat;
 
+Quaternion body_axis_z(Quaternion measure, float theta) {
+  Quaternion rotation;
+  rotation.w = cos(theta/2.0f);
+  rotation.x = 0.0f;
+  rotation.y = 0.0f;
+  rotation.z = sin(theta/2.0f);
+
+  Quaternion result = multiply_quaternion(&measure, &rotation);
+  return result;
+}
+
 void InitialPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    init_pose_x = msg->pose.position.x;
-    init_pose_y = msg->pose.position.y;
-    init_pose_z = msg->pose.position.z;
-    init_quat.x = msg->pose.orientation.x;
-    init_quat.y = msg->pose.orientation.y;
-    init_quat.z = msg->pose.orientation.z;
+    init_pose_x =  msg->pose.position.y;
+    init_pose_y =  msg->pose.position.x;
+    init_pose_z = -msg->pose.position.z - 0.3f;
+
+    init_quat.x = msg->pose.orientation.y;
+    init_quat.y = msg->pose.orientation.x;
+    init_quat.z = -msg->pose.orientation.z;
     init_quat.w = msg->pose.orientation.w;
+
+	Quaternion quat = body_axis_z(init_quat, 3.14159265359f / 2.0f);
+    init_quat = quat;
+
     if(initialized == 0) {
         kalman_init(&kf_x, init_pose_x, 0.0f);
         kalman_init(&kf_y, init_pose_y, 0.0f);
@@ -189,13 +209,28 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.child_frame_id = "base_link";
     // Fill in the pose
 
-    odom_msg.pose.pose.position.x = msg->pose.position.x;
-    odom_msg.pose.pose.position.y = msg->pose.position.y;
-    odom_msg.pose.pose.position.z = msg->pose.position.z;
-    odom_msg.pose.pose.orientation.x = msg->pose.orientation.x;
-    odom_msg.pose.pose.orientation.y = msg->pose.orientation.y;
-    odom_msg.pose.pose.orientation.z = msg->pose.orientation.z;
+    odom_msg.pose.pose.position.x = msg->pose.position.y;
+    odom_msg.pose.pose.position.y = msg->pose.position.x;
+    odom_msg.pose.pose.position.z = -msg->pose.position.z;
+
+    odom_msg.pose.pose.orientation.x = msg->pose.orientation.y;
+    odom_msg.pose.pose.orientation.y = msg->pose.orientation.x;
+    odom_msg.pose.pose.orientation.z = -msg->pose.orientation.z;
     odom_msg.pose.pose.orientation.w = msg->pose.orientation.w;
+
+    Quaternion q_measure;
+
+    q_measure.w = odom_msg.pose.pose.orientation.w;
+    q_measure.x = odom_msg.pose.pose.orientation.x;
+    q_measure.y = odom_msg.pose.pose.orientation.y;
+    q_measure.z = odom_msg.pose.pose.orientation.z;
+
+    Quaternion q_measured = body_axis_z(q_measure, 3.14159265359 / 2.0f);
+
+    odom_msg.pose.pose.orientation.x = q_measured.x;
+    odom_msg.pose.pose.orientation.y = q_measured.y;
+    odom_msg.pose.pose.orientation.z = q_measured.z;
+    odom_msg.pose.pose.orientation.w = q_measured.w;
 
     // Optionally, set twist (linear and angular velocity) to zero if unavailable
     odom_msg.twist.twist.linear.x = 0.0;
@@ -217,7 +252,7 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     real_world_pre_v_x = real_world_v_x;
     real_world_pre_v_y = real_world_v_y;
     real_world_pre_v_z = real_world_v_z;
-
+	ROS_INFO("world d acc: x=%f, y=%f, z=%f", real_world_acc_x, real_world_acc_y, real_world_acc_z);
 
     // Publish the Odometry message
     real_pose_pub.publish(odom_msg);
@@ -234,10 +269,10 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     // Fill in the pose
     odom_msg.pose.pose.position.x = msg->pose.position.x;
     odom_msg.pose.pose.position.y = msg->pose.position.y;
-    odom_msg.pose.pose.position.z = msg->pose.position.z;
+    odom_msg.pose.pose.position.z = -msg->pose.position.z;
     odom_msg.pose.pose.orientation.x = msg->pose.orientation.x;
     odom_msg.pose.pose.orientation.y = msg->pose.orientation.y;
-    odom_msg.pose.pose.orientation.z = msg->pose.orientation.z;
+    odom_msg.pose.pose.orientation.z = -msg->pose.orientation.z;
     odom_msg.pose.pose.orientation.w = msg->pose.orientation.w;
 
     // Optionally, set twist (linear and angular velocity) to zero if unavailable
@@ -259,10 +294,15 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
   imu_stamp = msg->header.stamp;
-    sensor_msgs::Imu new_msg = *msg;
-    new_msg.header.stamp = ros::Time::now();  // Update the timestamp to the current time
-    new_msg.header.frame_id = "base_link";
+	sensor_msgs::Imu new_msg = *msg;
+	new_msg.header.stamp = ros::Time::now();  // Update the timestamp to the current time
+	new_msg.header.frame_id = "base_link";
+// 	   new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
+//    new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
+//    new_msg.linear_acceleration.y = -new_msg.linear_acceleration.y;
+//    new_msg.linear_acceleration.z = -new_msg.linear_acceleration.z;
     imu_now_pub.publish(new_msg);
+
     Quaternion q;
     q.x = msg->orientation.x;
     q.y = msg->orientation.y;
@@ -279,7 +319,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
         kalman_predict(&kf_x, acc_world.x());
         kalman_predict(&kf_y, acc_world.y());
         kalman_predict(&kf_z, acc_world.z());
-        ROS_INFO("imu acc: x=%f, y=%f, z=%f", acc_world.x(), acc_world.y(), acc_world.z());
+        ROS_INFO("imu acc: x=%f, y=%f, z=%f", acc_world.x(), acc_world.y(), acc_world.z() + 9.810f);
 //        ROS_INFO("speed: x=%f, y=%f, z=%f", kf_x.x[1], kf_y.x[1], kf_z.x[1]);
 //        std::cout << "x position:" << kf_x.x[0] << "x velocity:" << kf_x.x[1] << std::endl;
 //        std::cout << "y position:" << kf_y.x[0] << "y velocity:" << kf_y.x[1] << std::endl;
@@ -327,12 +367,12 @@ int main(int argc, char **argv) {
     ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
     ros::Subscriber init_sub = pnh.subscribe("/airsim_node/initial_pose", 10, InitialPoseCallback);
 
+
     imu_now_pub = pnh.advertise<sensor_msgs::Imu>("/ekf/imu_now", 10);
     pcl_pub = pnh.advertise<sensor_msgs::PointCloud2>("/ekf/pcl", 10);
     odom_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb", 10);
-    real_pose_pub = pnh.advertise<geometry_msgs::PoseStamped>("/debug/real_pose_odom", 10);
+    real_pose_pub = pnh.advertise<nav_msgs::Odometry>("/debug/real_pose_odom", 10);
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
-
     ros::spin();
     return 0;
 }
