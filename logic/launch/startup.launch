@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="Rviz" default="False"/>
+    <arg name="Rviz" default="True"/>
     <group if="$(eval arg('Rviz') == True)">
-        <node name="rviz" pkg="rviz" type="rviz" args="-d $(find logic)/rviz/view1.rviz"/>
+        <node name="rviz_main" pkg="rviz" type="rviz" args="-d $(find logic)/rviz/view1.rviz"/>
     </group>
     <include file="$(find fast_lio)/launch/mapping_mid360.launch"/>
 <!--     <include file="$(find point_lio)/launch/mapping_avia.launch"/> -->
@@ -10,7 +10,7 @@
 <!--     <include file="$(find yolov5_ros)/launch/yolov5.launch"/> -->
     <include file="$(find tf_process)/launch/TF.launch"/>
     <include file="$(find basic_control)/launch/basic_control.launch"/>
-<!--     <include file="$(find tf_process)/launch/ekf3.launch"/> -->
+    <include file="$(find tf_process)/launch/ekf3.launch"/>
 <!--     <include file="$(find pcl2process)/launch/pcl2pro.launch"/> -->
 <!--     <include file="$(find move_controller)/launch/move_base.launch"/> -->
 </launch>

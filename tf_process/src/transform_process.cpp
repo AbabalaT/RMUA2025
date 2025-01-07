@@ -27,6 +27,8 @@ tf2_ros::Buffer tfBuffer;
 
 ros::Publisher lio_pub;
 
+int start_seq = 40;
+
 void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D地图上用于导航
     static tf2_ros::TransformBroadcaster br;
     tf2::Quaternion q;
@@ -62,10 +64,12 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
     trans.header.frame_id = "map";
     trans.child_frame_id = "odom_map";
     trans.header.stamp = ros::Time::now();
+
     trans.transform.rotation.x = 0;
     trans.transform.rotation.y = 0;
     trans.transform.rotation.z = 0;
     trans.transform.rotation.w = 1;
+
     trans.transform.translation.x = 0;
     trans.transform.translation.y = 0;
     trans.transform.translation.z = 0;
@@ -75,10 +79,10 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
 
     geometry_msgs::TransformStamped base2map;
     try {
-        base2map = tfBuffer.lookupTransform("odom", "body", ros::Time(0));
+        base2map = tfBuffer.lookupTransform("odom", "base_link", ros::Time(0));
     }
     catch (tf2::TransformException &ex) {
-        ROS_WARN("LIO Get TF ERROR!");
+        //ROS_WARN("LIO Get TF ERROR!");
         return;
     }
     nav_msgs::Odometry odom_msg;
@@ -94,6 +98,11 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
 
     odom_msg.pose.pose.orientation = base2map.transform.rotation;
 
+//    float temp = odom_msg.pose.pose.orientation.x;
+//    odom_msg.pose.pose.orientation.x = odom_msg.pose.pose.orientation.y;
+//    odom_msg.pose.pose.orientation.y = temp;
+//    odom_msg.pose.pose.orientation.z = -odom_msg.pose.pose.orientation.z;
+
     // Optionally, set velocity to zero if unavailable (TransformStamped doesn't contain velocity)
     odom_msg.twist.twist.linear.x = 0.0;
     odom_msg.twist.twist.linear.y = 0.0;
@@ -103,7 +112,12 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
     odom_msg.twist.twist.angular.z = 0.0;
 
     // Publish the Odometry message
-    lio_pub.publish(odom_msg);
+    if (0){
+      start_seq--;
+    }else{
+      lio_pub.publish(odom_msg);
+    }
+
 }
 
 int main(int argc, char **argv) {
