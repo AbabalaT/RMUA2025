@@ -11,9 +11,12 @@ Panels:
         - /filtered1/Shape1
         - /filtered1/Covariance1/Position1
         - /real1
+        - /uwb1
+        - /uwb1/Shape1
         - /start1
         - /LIO1
         - /Axes1
+        - /Odometry1
       Splitter Ratio: 0.4725806415081024
     Tree Height: 719
   - Class: rviz/Selection
@@ -139,7 +142,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: false
+      Enabled: true
       Keep: 1
       Name: real
       Position Tolerance: 0.10000000149011612
@@ -156,7 +159,7 @@ Visualization Manager:
         Value: Axes
       Topic: /debug/real_pose_odom
       Unreliable: true
-      Value: false
+      Value: true
     - Angle Tolerance: 0.10000000149011612
       Class: rviz/Odometry
       Covariance:
@@ -173,8 +176,8 @@ Visualization Manager:
           Color: 204; 51; 204
           Scale: 1
           Value: true
-        Value: true
-      Enabled: true
+        Value: false
+      Enabled: false
       Keep: 1
       Name: uwb
       Position Tolerance: 0.10000000149011612
@@ -182,7 +185,7 @@ Visualization Manager:
       Shape:
         Alpha: 1
         Axes Length: 1
-        Axes Radius: 0.10000000149011612
+        Axes Radius: 0.30000001192092896
         Color: 255; 25; 0
         Head Length: 0.30000001192092896
         Head Radius: 0.10000000149011612
@@ -191,7 +194,7 @@ Visualization Manager:
         Value: Axes
       Topic: /ekf/uwb
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/Axes
       Enabled: false
@@ -245,11 +248,46 @@ Visualization Manager:
       Reference Frame: base_link
       Show Trail: false
       Value: false
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Keep: 1
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Queue Size: 10
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Axes
+      Topic: /odometry/filtered
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: map
+    Fixed Frame: real_start
     Frame Rate: 30
   Name: root
   Tools:
@@ -272,8 +310,8 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/Orbit
-      Distance: 30.370615005493164
+      Class: rviz/ThirdPersonFollower
+      Distance: 5.08493709564209
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -281,17 +319,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 154.77059936523438
-        Y: 1327.681884765625
-        Z: 35.22211456298828
+        X: -0.606419563293457
+        Y: 0.524304986000061
+        Z: -0.42040976881980896
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6853979229927063
-      Target Frame: odom_map
-      Yaw: 0.7272160649299622
+      Pitch: 0.30539822578430176
+      Target Frame: real_start
+      Yaw: 2.7954020500183105
     Saved: ~
 Window Geometry:
   Displays:

@@ -48,6 +48,8 @@ float real_world_pre_x, real_world_pre_y, real_world_pre_z;
 
 int initialized = 0;
 
+int start_seq = 40;
+
 void kalman_init(KalmanState *kf, float initial_position, float initial_velocity) {
     // Initialize state
     kf->x[0] = initial_position;
@@ -192,24 +194,16 @@ void InitialPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 	world_quat_no_rotation = init_quat;
 	Quaternion quat = body_axis_z(init_quat, 3.14159265359f / 2.0f);
     init_quat = quat;
-
-//    if(initialized == 0) {
-//        kalman_init(&kf_x, init_pose_x, 0.0f);
-//        kalman_init(&kf_y, init_pose_y, 0.0f);
-//        kalman_init(&kf_z, init_pose_z, 0.0f);
-//        initialized = 1;
-//    }
 }
 
 void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    // Create an Odometry message
     nav_msgs::Odometry odom_msg;
 
-    // Fill in the header
+
     odom_msg.header.stamp = ros::Time::now();
-    odom_msg.header.frame_id = "odom_map";  // Set your desired frame_id, e.g., "odom"
+    odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
-    // Fill in the pose
+
 
     odom_msg.pose.pose.position.x = msg->pose.position.y;
     odom_msg.pose.pose.position.y = msg->pose.position.x;
@@ -233,44 +227,15 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.y = q_measured.y;
     odom_msg.pose.pose.orientation.z = q_measured.z;
     odom_msg.pose.pose.orientation.w = q_measured.w;
-//    world_quat
-
-
-    // Optionally, set twist (linear and angular velocity) to zero if unavailable
-    odom_msg.twist.twist.linear.x = 0.0;
-    odom_msg.twist.twist.linear.y = 0.0;
-    odom_msg.twist.twist.linear.z = 0.0;
-    odom_msg.twist.twist.angular.x = 0.0;
-    odom_msg.twist.twist.angular.y = 0.0;
-    odom_msg.twist.twist.angular.z = 0.0;
-
-    real_world_v_x = (msg->pose.position.x - real_world_pre_x) * 100.0f;
-    real_world_v_y = (msg->pose.position.y - real_world_pre_y) * 100.0f;
-    real_world_v_z = (msg->pose.position.z - real_world_pre_z) * 100.0f;
-    real_world_pre_x = msg->pose.position.x;
-    real_world_pre_y = msg->pose.position.y;
-    real_world_pre_z = msg->pose.position.z;
-    real_world_acc_x = (real_world_v_x - real_world_pre_v_x) * 100.0f;
-    real_world_acc_y = (real_world_v_y - real_world_pre_v_y) * 100.0f;
-    real_world_acc_z = (real_world_v_z - real_world_pre_v_z) * 100.0f;
-    real_world_pre_v_x = real_world_v_x;
-    real_world_pre_v_y = real_world_v_y;
-    real_world_pre_v_z = real_world_v_z;
-	//ROS_INFO("world d acc: x=%f, y=%f, z=%f", real_world_acc_x, real_world_acc_y, real_world_acc_z);
-
-    // Publish the Odometry message
     real_pose_pub.publish(odom_msg);
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    // Create an Odometry message
     nav_msgs::Odometry odom_msg;
-
-    // Fill in the header
     odom_msg.header.stamp = ros::Time::now();
-    odom_msg.header.frame_id = "odom_map";  // Set your desired frame_id, e.g., "odom"
+    odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
-    // Fill in the pose
+
     odom_msg.pose.pose.position.x = msg->pose.position.y;
     odom_msg.pose.pose.position.y = msg->pose.position.x;
     odom_msg.pose.pose.position.z = -msg->pose.position.z;
@@ -288,17 +253,11 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
     Quaternion q_measured = body_axis_z(q_measure, 3.14159265359 / 2.0f);
 
-//    odom_msg.pose.pose.orientation.x = q_measured.x;
-//    odom_msg.pose.pose.orientation.y = q_measured.y;
-//    odom_msg.pose.pose.orientation.z = q_measured.z;
-//    odom_msg.pose.pose.orientation.w = q_measured.w;
-
     odom_msg.pose.pose.orientation.x = world_quat.x;
     odom_msg.pose.pose.orientation.y = world_quat.y;
     odom_msg.pose.pose.orientation.z = world_quat.z;
     odom_msg.pose.pose.orientation.w = world_quat.w;
 
-    // Optionally, set twist (linear and angular velocity) to zero if unavailable
     odom_msg.twist.twist.linear.x = 0.0;
     odom_msg.twist.twist.linear.y = 0.0;
     odom_msg.twist.twist.linear.z = 0.0;
@@ -306,34 +265,20 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.twist.twist.angular.y = 0.0;
     odom_msg.twist.twist.angular.z = 0.0;
 
-    // Publish the Odometry message
     odom_pub.publish(odom_msg);
-//    if(initialized != 0) {
-//        kalman_correct(&kf_x, msg->pose.position.x);
-//        kalman_correct(&kf_y, msg->pose.position.y);
-//        kalman_correct(&kf_z, msg->pose.position.z);
-//    }
 }
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
-  imu_stamp = ros::Time::now();
+  	imu_stamp = ros::Time::now();
 	sensor_msgs::Imu new_msg = *msg;
-	new_msg.header.stamp = ros::Time::now();  // Update the timestamp to the current time
+	new_msg.header.stamp = ros::Time::now();
 	new_msg.header.frame_id = "base_link";
 
-// 	new_msg.angular_velocity.y = new_msg.angular_velocity.y;
-//    new_msg.angular_velocity.z = new_msg.angular_velocity.z;
-//    new_msg.linear_acceleration.y = new_msg.linear_acceleration.y;
-//    new_msg.linear_acceleration.z = new_msg.linear_acceleration.z + 9.810f;
-
     Quaternion q_measure;
-
     q_measure.w = new_msg.orientation.w;
     q_measure.x = new_msg.orientation.y;
     q_measure.y = new_msg.orientation.x;
     q_measure.z = - new_msg.orientation.z;
-
-//    Quaternion q_measured = body_axis_z(q_measure, 3.14159265359 / 2.0f);
 
     new_msg.orientation.x = q_measure.x;
     new_msg.orientation.y = q_measure.y;
@@ -351,32 +296,12 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
 
     Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
     world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
-//    tf2::Quaternion world_to_body_quat(world_quat.x, world_quat.y, world_quat.z, world_quat.w);
-//
-//    tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
-//    tf2::Vector3 acc_body(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-////    ROS_INFO("world_quat: %f %f %f %f", world_quat.x, world_quat.y, world_quat.z, world_quat.w);
-//    tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
-//
-//    if(initialized != 0) {
-//        kalman_predict(&kf_x, acc_world.x());
-//        kalman_predict(&kf_y, acc_world.y());
-//        kalman_predict(&kf_z, acc_world.z());
-////        ROS_INFO("imu acc: x=%f, y=%f, z=%f", acc_world.x(), acc_world.y(), acc_world.z() + 9.810f);
-////        ROS_INFO("speed: x=%f, y=%f, z=%f", kf_x.x[1], kf_y.x[1], kf_z.x[1]);
-////        std::cout << "x position:" << kf_x.x[0] << "x velocity:" << kf_x.x[1] << std::endl;
-////        std::cout << "y position:" << kf_y.x[0] << "y velocity:" << kf_y.x[1] << std::endl;
-////        std::cout << "z position:" << kf_z.x[0] << "z velocity:" << kf_z.x[1] << std::endl;
-//    }
 }
 
 void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
-    sensor_msgs::PointCloud2 new_msg = *msg;  // Copy the original message
-
-    // Update the timestamp to the current time
+    sensor_msgs::PointCloud2 new_msg = *msg;
     new_msg.header.stamp = ros::Time::now();
     new_msg.header.frame_id = "base_link";
-    // Republish the message with the new timestamp
     pcl_pub.publish(new_msg);
 }
 
@@ -385,7 +310,7 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
     geometry_msgs::TransformStamped trans;
 
     trans.header.frame_id = "map";
-    trans.child_frame_id = "odom";
+    trans.child_frame_id = "real_start";
     trans.header.stamp = ros::Time::now();
     trans.transform.rotation.x = init_quat.x;
     trans.transform.rotation.y = init_quat.y;
@@ -402,7 +327,7 @@ int main(int argc, char **argv) {
     ros::NodeHandle pnh("~");
     tf2_ros::TransformListener tfListener(tfBuffer);
 
-//    ros::Timer timer1 = pnh.createTimer(ros::Duration(0.02), project2plane_callback);
+    ros::Timer timer1 = pnh.createTimer(ros::Duration(0.02), project2plane_callback);
 
     ros::Subscriber imu_sub = pnh.subscribe("/airsim_node/drone_1/imu/imu", 10, imuCallback);
     ros::Subscriber pose_sub = pnh.subscribe("/airsim_node/drone_1/gps", 10, poseCallback);
