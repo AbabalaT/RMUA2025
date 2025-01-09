@@ -253,10 +253,24 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
     Quaternion q_measured = body_axis_z(q_measure, 3.14159265359 / 2.0f);
 
-    odom_msg.pose.pose.orientation.x = world_quat.x;
-    odom_msg.pose.pose.orientation.y = world_quat.y;
-    odom_msg.pose.pose.orientation.z = world_quat.z;
-    odom_msg.pose.pose.orientation.w = world_quat.w;
+    odom_msg.pose.pose.orientation.x = q_measured.x;
+    odom_msg.pose.pose.orientation.y = q_measured.y;
+    odom_msg.pose.pose.orientation.z = q_measured.z;
+    odom_msg.pose.pose.orientation.w = q_measured.w;
+
+    double conv_1 = 1.0f;
+    double conv_2 = 2.0f;
+
+    for(int i = 0; i < 35; i++) {
+        odom_msg.pose.covariance[0] = 1e-8;
+    }
+
+    odom_msg.pose.covariance[0] = conv_1;
+    odom_msg.pose.covariance[7] = conv_1;
+    odom_msg.pose.covariance[14] = 3.0;
+    odom_msg.pose.covariance[21] = conv_2;
+    odom_msg.pose.covariance[28] = conv_2;
+    odom_msg.pose.covariance[35] = conv_2;
 
     odom_msg.twist.twist.linear.x = 0.0;
     odom_msg.twist.twist.linear.y = 0.0;
@@ -285,17 +299,44 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.orientation.z = q_measure.z;
     new_msg.orientation.w = q_measure.w;
 
+    double conv_1 = 0.05;
+    double conv_2 = 0.5;
+    double conv_3 = 3e-6;
+    double conv_4 = 3e-4;
+    new_msg.angular_velocity_covariance[0] = conv_1;
+    new_msg.angular_velocity_covariance[1] = conv_3;
+    new_msg.angular_velocity_covariance[2] = conv_3;
+    new_msg.angular_velocity_covariance[3] = conv_3;
+
+    new_msg.angular_velocity_covariance[4] = conv_1;
+    new_msg.angular_velocity_covariance[5] = conv_3;
+    new_msg.angular_velocity_covariance[6] = conv_3;
+    new_msg.angular_velocity_covariance[7] = conv_3;
+
+    new_msg.angular_velocity_covariance[8] = conv_1;
+
+    new_msg.linear_acceleration_covariance[0] = conv_2;
+    new_msg.linear_acceleration_covariance[4] = conv_2;
+    new_msg.linear_acceleration_covariance[8] = conv_2;
+
+    new_msg.linear_acceleration_covariance[1] = conv_4;
+    new_msg.linear_acceleration_covariance[2] = conv_4;
+    new_msg.linear_acceleration_covariance[3] = conv_4;
+    new_msg.linear_acceleration_covariance[5] = conv_4;
+    new_msg.linear_acceleration_covariance[6] = conv_4;
+    new_msg.linear_acceleration_covariance[7] = conv_4;
+
+    tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z, new_msg.orientation.w);
+    tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
+    tf2::Vector3 acc_body(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+    tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
+    acc_world.setZ(acc_world.z() + 9.80);
+    acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
+    new_msg.linear_acceleration.x = acc_body.x();
+    new_msg.linear_acceleration.y = acc_body.y();
+    new_msg.linear_acceleration.z = acc_body.z();
+
     imu_now_pub.publish(new_msg);
-
-    Quaternion q;
-
-    q.x = msg->orientation.x;
-    q.y = msg->orientation.y;
-    q.z = msg->orientation.z;
-    q.w = msg->orientation.w;
-
-    Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
-    world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
 }
 
 void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
@@ -305,7 +346,7 @@ void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
     pcl_pub.publish(new_msg);
 }
 
-void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D地图上用于导航
+void project2plane_callback(const ros::TimerEvent&){
     static tf2_ros::TransformBroadcaster br;
     geometry_msgs::TransformStamped trans;
 
@@ -332,7 +373,7 @@ int main(int argc, char **argv) {
     ros::Subscriber imu_sub = pnh.subscribe("/airsim_node/drone_1/imu/imu", 10, imuCallback);
     ros::Subscriber pose_sub = pnh.subscribe("/airsim_node/drone_1/gps", 10, poseCallback);
     ros::Subscriber debug_pose = pnh.subscribe("/airsim_node/drone_1/debug/pose_gt", 10, RealPoseCallback);
-    ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
+    //ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
     ros::Subscriber init_sub = pnh.subscribe("/airsim_node/initial_pose", 10, InitialPoseCallback);
 
 
