@@ -24,20 +24,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
 
-#define DT 0.01  // Time step (assumed to be 0.1s for this example)
-#define Q 0.01  // Process noise covariance (adjust as needed)
-#define R_POS 1.0  // Measurement noise covariance for position
-#define R_ACC 0.1  // Measurement noise covariance for acceleration
-
-// Kalman filter state (position and velocity)
-typedef struct {
-    float x[2];  // x[0] = position, x[1] = velocity
-    float P[2][2];  // Covariance matrix
-} KalmanState;
-
-KalmanState kf_x;
-KalmanState kf_y;
-KalmanState kf_z;
+#include "MahonyAHRS.hpp"
 
 tf2::Quaternion ned2enu_quat;
 
@@ -50,56 +37,6 @@ int initialized = 0;
 
 int start_seq = 40;
 
-void kalman_init(KalmanState *kf, float initial_position, float initial_velocity) {
-    // Initialize state
-    kf->x[0] = initial_position;
-    kf->x[1] = initial_velocity;
-
-    // Initialize covariance matrix (assumes high uncertainty initially)
-    kf->P[0][0] = 1.0;  // Position uncertainty
-    kf->P[0][1] = 0.0;  // Cross-correlation between position and velocity
-    kf->P[1][0] = 0.0;  // Cross-correlation between position and velocity
-    kf->P[1][1] = 1.0;  // Velocity uncertainty
-}
-
-void kalman_predict(KalmanState *kf, float acceleration) {
-    // State prediction: x' = Ax + Bu, where u is acceleration
-    kf->x[0] += kf->x[1] * DT + 0.5 * acceleration * DT * DT;  // Predict position
-    kf->x[1] += acceleration * DT;  // Predict velocity
-
-    // Covariance prediction: P' = AP + PA^T + Q
-    kf->P[0][0] += kf->P[0][1] * DT + DT * kf->P[1][0] + Q;
-    kf->P[0][1] += kf->P[0][1] * DT;
-    kf->P[1][0] += kf->P[1][0] * DT;
-    kf->P[1][1] += Q;
-}
-
-void kalman_correct(KalmanState *kf, float measured_position) {
-    // Measurement update
-    float y = measured_position - kf->x[0];  // Innovation (residual)
-
-    // Calculate Kalman Gain: K = P * H^T * (H * P * H^T + R)^-1
-    float S = kf->P[0][0] + R_POS;  // Measurement residual covariance
-    float K[2];  // Kalman gain
-    K[0] = kf->P[0][0] / S;
-    K[1] = kf->P[1][0] / S;
-
-    // Update state estimate
-    kf->x[0] += K[0] * y;  // Update position
-    kf->x[1] += K[1] * y;  // Update velocity
-
-    // Update covariance estimate
-    float P00_new = kf->P[0][0] - K[0] * kf->P[0][0];
-    float P01_new = kf->P[0][1] - K[0] * kf->P[0][1];
-    float P10_new = kf->P[1][0] - K[1] * kf->P[0][0];
-    float P11_new = kf->P[1][1] - K[1] * kf->P[1][0];
-
-    kf->P[0][0] = P00_new;
-    kf->P[0][1] = P01_new;
-    kf->P[1][0] = P10_new;
-    kf->P[1][1] = P11_new;
-}
-
 ros::Time imu_stamp;
 tf2_ros::Buffer tfBuffer;
 
@@ -108,14 +45,15 @@ ros::Publisher odom_pub;
 ros::Publisher lio_pub;
 ros::Publisher real_pose_pub;
 ros::Publisher pcl_pub;
-
-
+ros::Publisher ahrs_pub;
 
 float init_pose_x, init_pose_y, init_pose_z;
 
 typedef struct {
     float w, x, y, z;
 } Quaternion;
+
+float mahony_quaternion[4];
 
 Quaternion multiply_quaternion(Quaternion *q1, Quaternion *q2) {
     Quaternion result;
@@ -258,8 +196,8 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.z = q_measured.z;
     odom_msg.pose.pose.orientation.w = q_measured.w;
 
-    double conv_1 = 1.0f;
-    double conv_2 = 2.0f;
+    double conv_1 = 0.5f;
+    double conv_2 = 1.0f;
 
     for(int i = 0; i < 35; i++) {
         odom_msg.pose.covariance[0] = 1e-8;
@@ -326,6 +264,10 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.linear_acceleration_covariance[6] = conv_4;
     new_msg.linear_acceleration_covariance[7] = conv_4;
 
+    MahonyAHRSupdateIMU(mahony_quaternion, new_msg.angular_velocity.x, new_msg.angular_velocity.y, new_msg.angular_velocity.z,
+                        new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
+	//ROS_INFO("IMU quaternion: w: %f, x: %f, y:%f, z:%f", mahony_quaternion[0], mahony_quaternion[1], mahony_quaternion[2], mahony_quaternion[3]);
+
     tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z, new_msg.orientation.w);
     tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
     tf2::Vector3 acc_body(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
@@ -376,12 +318,17 @@ int main(int argc, char **argv) {
     //ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
     ros::Subscriber init_sub = pnh.subscribe("/airsim_node/initial_pose", 10, InitialPoseCallback);
 
-
     imu_now_pub = pnh.advertise<sensor_msgs::Imu>("/ekf/imu_now", 10);
     pcl_pub = pnh.advertise<sensor_msgs::PointCloud2>("/ekf/pcl", 10);
     odom_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb", 10);
     real_pose_pub = pnh.advertise<nav_msgs::Odometry>("/debug/real_pose_odom", 10);
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
+    ahrs_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/ahrs", 10);
+
+    mahony_quaternion[0] = 1.0;
+    mahony_quaternion[1] = 0.0;
+    mahony_quaternion[2] = 0.0;
+    mahony_quaternion[3] = 0.0;
     ros::spin();
     return 0;
 }

@@ -12,6 +12,12 @@
 #include <sensor_msgs/Imu.h>
 #include <std_msgs/Float32.h>
 
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Vector3.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+
+#include <nav_msgs/Odometry.h>
+
 #endif //BASIC_CONTROL_HPP
 
 class BasicControl {
@@ -45,7 +51,7 @@ private:
     void channel4_callback(const std_msgs::Float32::ConstPtr& msg);
     void channel5_callback(const std_msgs::Float32::ConstPtr& msg);
     void channel6_callback(const std_msgs::Float32::ConstPtr& msg);
-	void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
+	void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void rc_mode_check_callback(const ros::TimerEvent& event);
 
     void imuCallback(const sensor_msgs::Imu::ConstPtr& msg);

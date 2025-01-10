@@ -479,7 +479,7 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
   rc_channel4_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc4", 1, std::bind(&BasicControl::channel4_callback, this, std::placeholders::_1));
   rc_channel5_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc5", 1, std::bind(&BasicControl::channel5_callback, this, std::placeholders::_1));
   rc_channel6_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc6", 1, std::bind(&BasicControl::channel6_callback, this, std::placeholders::_1));
-  pose_suber = nh->subscribe<geometry_msgs::PoseStamped>("/airsim_node/drone_1/debug/pose_gt", 1, std::bind(&BasicControl::poseCallback, this, std::placeholders::_1));//TODO(change to estimated pose)
+  pose_suber = nh->subscribe<nav_msgs::Odometry>("/odometry/filtered", 1, std::bind(&BasicControl::poseCallback, this, std::placeholders::_1));//TODO(change to estimated pose)
   nh->setParam("/custom_debug/rc_mode", 2);//TODO(change to 0 later)
   imu_suber = nh->subscribe<sensor_msgs::Imu>("/airsim_node/drone_1/imu/imu", 1, std::bind(&BasicControl::imuCallback, this, std::placeholders::_1));
   pwm_publisher = nh->advertise<airsim_ros::RotorPWM>("/airsim_node/drone_1/rotor_pwm_cmd", 1);
@@ -498,8 +498,41 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
 
 BasicControl::~BasicControl(){}
 
-void BasicControl::poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+float target_vel_x;
+float target_vel_y;
+float target_vel_z;
 
+void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
+	if(ctrl_mode == 2 and rc_mode == 1){
+		target_vel_y = rc_channel[0] / -50.0f;
+		target_vel_x = rc_channel[1] / 50.0f;
+		target_w_yaw = rc_channel[3] * -0.002341f;
+		target_vel_z = rc_channel[3] / 100.0f;
+	}
+    float body_measure_vel[3];
+    body_measure_vel[0] = msg->twist.twist.linear.x;
+    body_measure_vel[1] = msg->twist.twist.linear.y;
+    body_measure_vel[2] = msg->twist.twist.linear.z;
+
+	Quaternion odom_pose;
+	odom_pose.w = msg->pose.pose.orientation.w;
+	odom_pose.x = msg->pose.pose.orientation.x;
+	odom_pose.y = msg->pose.pose.orientation.y;
+	odom_pose.z = msg->pose.pose.orientation.z;
+
+    Quaternion body_to_world = quaternion_conjugate(odom_pose);
+    float world_measure_vel[3];
+	World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
+
+	float measure_yaw = 0.0f;
+	measure_yaw = -1.0f * atan2(2.0 * (odom_pose.w * odom_pose.z + odom_pose.x * odom_pose.y),
+		1.0 - 2.0 * (odom_pose.y * odom_pose.y + odom_pose.z * odom_pose.z));
+	float body_measure_vel_x = world_measure_vel[0] * cos(measure_yaw) - world_measure_vel[1] * sin(measure_yaw);
+    float body_measure_vel_y = world_measure_vel[0] * sin(measure_yaw) + world_measure_vel[1] * cos(measure_yaw);
+
+	Quaternion de_yaw_quaternion = yaw_to_quaternion(measure_yaw);
+
+	Quaternion de_yaw_ahrs = multiply_quaternion(&de_yaw_quaternion, &odom_pose);
 }
 
 void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
@@ -521,7 +554,7 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	target_quaternion.y = 0.0f;
 	target_quaternion.z = 0.0f;
 
-	if(ctrl_mode == 1 and ctrl_mode == 1){
+	if(ctrl_mode == 1 and rc_mode == 1){
          target_angle_roll = rc_channel[0] * 1.5e-3;
          target_angle_pitch = rc_channel[1] * -1.5e-3;
          target_w_yaw = rc_channel[3] * -0.002341f;
@@ -532,7 +565,7 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     temp_quaternion = pitch_to_quaternion(target_angle_pitch);
     target_quaternion = multiply_quaternion(&temp_quaternion, &target_quaternion);
 	temp_quaternion = roll_to_quaternion(target_angle_roll);
-	target_quaternion = multiply_quaternion(&temp_quaternion, &target_quaternion);
+	target_quaternion = multiply_quaternion(&target_quaternion, &temp_quaternion);
     temp_quaternion = quaternion_diff(de_yaw_ahrs, target_quaternion);
 
 	quaternionToAngles(temp_quaternion, &error_angle[0], &error_angle[1], &error_angle[2]);
@@ -551,34 +584,34 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	w_yaw_world[2] = target_w_yaw;
     World_to_Body(w_yaw_world, w_yaw_body, measure_quaternion);
 
-    if(ctrl_mode != 0 or rc_mode != 1){
-      	target_velocity_roll = pid_angle_roll(error_body[0]) + w_yaw_body[0];
-      	target_velocity_pitch = -pid_angle_pitch(error_body[1]) - w_yaw_body[1];
-		target_velocity_yaw = pid_angle_yaw(error_body[2]) + w_yaw_body[2];
 
-		if(target_velocity_pitch > 3.0f){
-			target_velocity_pitch = 3.0f;
-		}
-		if(target_velocity_pitch < -3.0f){
-			target_velocity_pitch = -3.0f;
-		}
-		if(target_velocity_roll > 3.0f){
-			target_velocity_roll = 3.0f;
-		}
-		if(target_velocity_roll < -3.0f){
-			target_velocity_roll = -3.0f;
-		}
-		if(target_velocity_yaw > 3.0f){
-			target_velocity_yaw = 3.0f;
-		}
-		if(target_velocity_yaw < -3.0f){
-			target_velocity_yaw = -3.0f;
-		}
-    }
+    target_velocity_roll = pid_angle_roll(error_body[0]) + w_yaw_body[0];
+    target_velocity_pitch = -pid_angle_pitch(error_body[1]) - w_yaw_body[1];
+	target_velocity_yaw = pid_angle_yaw(error_body[2]) + w_yaw_body[2];
+
+	if(target_velocity_pitch > 3.0f){
+		target_velocity_pitch = 3.0f;
+	}
+	if(target_velocity_pitch < -3.0f){
+		target_velocity_pitch = -3.0f;
+	}
+	if(target_velocity_roll > 3.0f){
+		target_velocity_roll = 3.0f;
+	}
+	if(target_velocity_roll < -3.0f){
+		target_velocity_roll = -3.0f;
+	}
+	if(target_velocity_yaw > 3.0f){
+		target_velocity_yaw = 3.0f;
+	}
+	if(target_velocity_yaw < -3.0f){
+		target_velocity_yaw = -3.0f;
+	}
 
 	gyro_data[0] = msg->angular_velocity.x;
     gyro_data[1] = msg->angular_velocity.y;
     gyro_data[2] = msg->angular_velocity.z;
+
     if(ctrl_mode == 0 and rc_mode == 1){
 		target_velocity_roll = rc_channel[0] * 0.004;
 		target_velocity_pitch = rc_channel[1] * 0.004;
