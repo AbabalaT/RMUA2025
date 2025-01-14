@@ -191,13 +191,13 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
     Quaternion q_measured = body_axis_z(q_measure, 3.14159265359 / 2.0f);
 
-    odom_msg.pose.pose.orientation.x = q_measured.x;
-    odom_msg.pose.pose.orientation.y = q_measured.y;
-    odom_msg.pose.pose.orientation.z = q_measured.z;
-    odom_msg.pose.pose.orientation.w = q_measured.w;
+    odom_msg.pose.pose.orientation.x = world_quat.x;
+    odom_msg.pose.pose.orientation.y = world_quat.y;
+    odom_msg.pose.pose.orientation.z = world_quat.z;
+    odom_msg.pose.pose.orientation.w = world_quat.w;
 
     double conv_1 = 0.5f;
-    double conv_2 = 1.0f;
+    double conv_2 = 1.2f;
 
     for(int i = 0; i < 35; i++) {
         odom_msg.pose.covariance[0] = 1e-8;
@@ -279,6 +279,8 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.linear_acceleration.z = acc_body.z();
 
     imu_now_pub.publish(new_msg);
+    Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
+    world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
 }
 
 void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){

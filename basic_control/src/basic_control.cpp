@@ -14,6 +14,9 @@ typedef struct {
 
 float mat_pid[4][4];	//R-P-Y-throttle
 float angle_pid_mat[3][3];
+double velocity_pid_mat[4][4];
+
+int init_waiting = 55;
 
 float throttle_set = 0.0f;
 
@@ -32,7 +35,12 @@ float w_yaw_body[3];
 float motor_idle_speed = 0.0;
 float motor_max_speed = 1000.0;
 
-float pid_N = 0.5f;//离散pid微分低通滤波
+float pid_N = 0.35f;//离散pid微分低通滤波
+float pid_N_v = 0.7f;
+
+long imu_t;
+long pose_t;
+long pre_imu_sec, pre_imu_nsec, pre_pose_sec, pre_pose_nsec;
 
 float kalman_roll(float measure){
 	static float x;
@@ -69,31 +77,46 @@ float kalman_yaw(float measure){
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 40.0;
-    mat_pid[0][2] = 12.0;
+	mat_pid[0][1] = 27.0;
+    mat_pid[0][2] = 8.5;
 	mat_pid[0][3] = 4.0;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 40.0f;//697.6f;
-	mat_pid[1][2] = 12.0;
+	mat_pid[1][1] = 27.0f;//697.6f;
+	mat_pid[1][2] = 8.5;
 	mat_pid[1][3] = 4.0;
 	
 	mat_pid[2][0] = 0.0;
 	mat_pid[2][1] = 100.0f;//139.53f;
-	mat_pid[2][2] = 55.0f;
-	mat_pid[2][3] = 20.0;
+	mat_pid[2][2] = 60.0f;
+	mat_pid[2][3] = 24.0;
 	
 	angle_pid_mat[0][0] = 1.2;
-	angle_pid_mat[0][1] = 0.001f;//0.00006;//232.55f;
-	angle_pid_mat[0][2] = 0.03f;
+	angle_pid_mat[0][1] = 0.0001f;//0.00006;//232.55f;
+	angle_pid_mat[0][2] = 0.045f;
 
 	angle_pid_mat[1][0] = 1.2;
-	angle_pid_mat[1][1] = 0.001f;//0.00002f;//697.6f;
-	angle_pid_mat[1][2] = 0.03f;
+	angle_pid_mat[1][1] = 0.0001f;//0.00002f;//697.6f;
+	angle_pid_mat[1][2] = 0.045f;
 	
 	angle_pid_mat[2][0] = 1.2;
-	angle_pid_mat[2][1] = 0.001f;//0.000045f;//139.53f;
-	angle_pid_mat[2][2] = 0.03f;
+	angle_pid_mat[2][1] = 0.0001f;//0.000045f;//139.53f;
+	angle_pid_mat[2][2] = 0.045f;
+
+//	velocity_pid_mat[1][0] = 0.0; //horizen
+//	velocity_pid_mat[1][1] = 0.02f;//697.6f;
+//	velocity_pid_mat[1][2] = 0.002;
+//	velocity_pid_mat[1][3] = 0.00004;//0.00004;
+
+    velocity_pid_mat[1][0] = 0.0; //horizen
+	velocity_pid_mat[1][1] = 0.05f;//697.6f;
+	velocity_pid_mat[1][2] = 0.08;
+	velocity_pid_mat[1][3] = 0.024;//0.00004;
+
+	velocity_pid_mat[2][0] = 0.0; //vertical
+	velocity_pid_mat[2][1] = 0.075f;//139.53f;
+	velocity_pid_mat[2][2] = 0.5f;
+	velocity_pid_mat[2][3] = 0.015f;//0.015;
 }
 
 float pid_roll(float target, float real){
@@ -106,6 +129,7 @@ float pid_roll(float target, float real){
 	static float d_out;
 	static float d_error;
 
+	error = target - real;
 	error = target - real;
 	sum = sum + error;
 
@@ -124,15 +148,16 @@ float pid_roll(float target, float real){
 	if(throttle_set < 0.010f){
 		sum = 0.0f;
 	}
-
+	if(init_waiting > 0){
+          sum = 0.0f;
+	}
 	d_error = 0.0f - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
 
 	d_out =  pid_N * error_rate + (1.0f - pid_N) * d_out_1;
 	d_out_1 = d_out;
-//    std::cout<<throttle_set<<std::endl;
-//	std::cout<<target<<" "<<error<<" "<<sum<<" "<<d_out<<std::endl;
+
 	result = mat_pid[0][0]*target + mat_pid[0][1]*error + mat_pid[0][2]*sum*0.01 + mat_pid[0][3]*d_out / 0.01;
 	return result;
 }
@@ -157,6 +182,9 @@ float pid_pitch(float target, float real){
 		sum = -10000.0;
 	}
 	if(error > 7.2f){
+		sum = 0.0f;
+	}
+	if(init_waiting > 0){
 		sum = 0.0f;
 	}
 	if(error < -7.2f){
@@ -193,15 +221,13 @@ float pid_yaw(float target, float real){
 	if(sum > 10000.0f){
 		sum = 10000.0;
 	}
+	if(init_waiting > 0){
+		sum = 0.0f;
+	}
 	if(sum < -10000.0f){
 		sum = -10000.0;
 	}
-//	if(error > 30.0f){
-//		sum = 0.0f;
-//	}
-//	if(error < -30.0f){
-//		sum = 0.0f;
-//	}
+
 	if(throttle_set < 0.010f){
 		sum = 0.0f;
 	}
@@ -304,6 +330,123 @@ float pid_angle_yaw(float error){
 	error_rate = error - pre_error;
 	pre_error = error;
 	result = angle_pid_mat[2][0]*error + angle_pid_mat[2][1] * 0.01 * sum + angle_pid_mat[2][2] / 0.01 *error_rate;
+	return result;
+}
+
+float pid_vx(float target, float real){
+	static float error;
+	static float sum;
+	static float pre_error;
+	static float result;
+	static float error_rate;
+	static float d_out_1;
+	static float d_out;
+	static float d_error;
+
+	error = target - real;
+	sum = sum + error;
+
+	if(sum > 2000.0f){
+		sum = 2000.0;
+	}
+	if(sum < -2000.0f){
+		sum = -2000.0;
+	}
+	if(error > 50.0f){
+		sum = 0.0f;
+	}
+	if(error < -50.0f){
+		sum = 0.0f;
+	}
+	if(init_waiting > 0){
+		sum = 0.0f;
+	}
+	d_error = 0.0 - real;
+	error_rate = d_error - pre_error;
+	pre_error = d_error;
+
+	d_out =  pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
+	d_out_1 = d_out;
+
+	result = velocity_pid_mat[1][0]*target + velocity_pid_mat[1][1]*(error + velocity_pid_mat[1][2]*sum*0.01 + velocity_pid_mat[1][3]*d_out / 0.01);
+	return result;
+}
+
+float pid_vy(float target, float real){
+	static float error;
+	static float sum;
+	static float pre_error;
+	static float result;
+	static float error_rate;
+	static float d_out_1;
+	static float d_out;
+	static float d_error;
+
+	error = target - real;
+	sum = sum + error;
+
+	if(sum > 2000.0f){
+		sum = 2000.0;
+	}
+	if(sum < -2000.0f){
+		sum = -2000.0;
+	}
+	if(error > 50.0f){
+		sum = 0.0f;
+	}
+	if(error < -50.0f){
+		sum = 0.0f;
+	}
+	if(init_waiting > 0){
+		sum = 0.0f;
+	}
+	d_error = 0.0 - real;
+	error_rate = d_error - pre_error;
+	pre_error = d_error;
+
+	d_out =  pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
+	d_out_1 = d_out;
+
+	result = velocity_pid_mat[1][0]*target + velocity_pid_mat[1][1]*(error + velocity_pid_mat[1][2]*sum*0.01 + velocity_pid_mat[1][3]*d_out / 0.01);
+	return result;
+}
+
+float pid_vz(float target, float real){
+	static float error;
+	static float sum;
+	static float pre_error;
+	static float result;
+	static float error_rate;
+	static float d_out_1;
+	static float d_out;
+	static float d_error;
+
+	error = target - real;
+	sum = sum + error;
+
+	if(sum > 2000.0f){
+		sum = 2000.0;
+	}
+	if(sum < -2000.0f){
+		sum = -2000.0;
+	}
+	if(error > 50.0f){
+		sum = 0.0f;
+	}
+	if(error < -50.0f){
+		sum = 0.0f;
+	}
+	if(init_waiting > 0){
+		sum = 0.0f;
+	}
+	d_error = 0.0 - real;
+	error_rate = d_error - pre_error;
+	pre_error = d_error;
+
+	d_out =  pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
+	d_out_1 = d_out;
+
+	result = velocity_pid_mat[2][0]*target + velocity_pid_mat[2][1]*(error + velocity_pid_mat[2][2]*sum*0.01 + velocity_pid_mat[2][3]*d_out / 0.01);
 	return result;
 }
 
@@ -480,7 +623,7 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
   rc_channel5_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc5", 1, std::bind(&BasicControl::channel5_callback, this, std::placeholders::_1));
   rc_channel6_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc6", 1, std::bind(&BasicControl::channel6_callback, this, std::placeholders::_1));
   pose_suber = nh->subscribe<nav_msgs::Odometry>("/odometry/filtered", 1, std::bind(&BasicControl::poseCallback, this, std::placeholders::_1));//TODO(change to estimated pose)
-  nh->setParam("/custom_debug/rc_mode", 2);//TODO(change to 0 later)
+  nh->setParam("/custom_debug/rc_mode", 3);//TODO(change to 0 later)
   imu_suber = nh->subscribe<sensor_msgs::Imu>("/airsim_node/drone_1/imu/imu", 1, std::bind(&BasicControl::imuCallback, this, std::placeholders::_1));
   pwm_publisher = nh->advertise<airsim_ros::RotorPWM>("/airsim_node/drone_1/rotor_pwm_cmd", 1);
 
@@ -502,13 +645,19 @@ float target_vel_x;
 float target_vel_y;
 float target_vel_z;
 
+float hover_throttle = 0.175;
+
 void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
+
+  	float target_vel_body[3];
+
 	if(ctrl_mode == 2 and rc_mode == 1){
-		target_vel_y = rc_channel[0] / -50.0f;
-		target_vel_x = rc_channel[1] / 50.0f;
+		target_vel_body[1] = rc_channel[0] / -50.0f;
+		target_vel_body[0] = rc_channel[1] / 50.0f;
 		target_w_yaw = rc_channel[3] * -0.002341f;
-		target_vel_z = rc_channel[3] / 100.0f;
+		target_vel_body[2] = rc_channel[2] / 100.0f;
 	}
+
     float body_measure_vel[3];
     body_measure_vel[0] = msg->twist.twist.linear.x;
     body_measure_vel[1] = msg->twist.twist.linear.y;
@@ -525,14 +674,65 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
 	World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
 
 	float measure_yaw = 0.0f;
-	measure_yaw = -1.0f * atan2(2.0 * (odom_pose.w * odom_pose.z + odom_pose.x * odom_pose.y),
+	measure_yaw = atan2(2.0 * (odom_pose.w * odom_pose.z + odom_pose.x * odom_pose.y),
 		1.0 - 2.0 * (odom_pose.y * odom_pose.y + odom_pose.z * odom_pose.z));
-	float body_measure_vel_x = world_measure_vel[0] * cos(measure_yaw) - world_measure_vel[1] * sin(measure_yaw);
-    float body_measure_vel_y = world_measure_vel[0] * sin(measure_yaw) + world_measure_vel[1] * cos(measure_yaw);
+	Quaternion yaw_quaternion = yaw_to_quaternion(measure_yaw);
+    Quaternion body_to_yaw = quaternion_conjugate(yaw_quaternion);
+    float world_target_vel[3];
+	World_to_Body(target_vel_body, world_target_vel, body_to_yaw);
 
-	Quaternion de_yaw_quaternion = yaw_to_quaternion(measure_yaw);
+    float world_force[3];
+    float body_force[3];
 
-	Quaternion de_yaw_ahrs = multiply_quaternion(&de_yaw_quaternion, &odom_pose);
+	world_force[0] = pid_vx(world_target_vel[0], world_measure_vel[0]);
+    world_force[1] = pid_vy(world_target_vel[1], world_measure_vel[1]);
+	world_force[2] = pid_vz(world_target_vel[2], world_measure_vel[2]);
+
+    world_force[2] = world_force[2] + hover_throttle;
+    if(world_force[2] < 0.05f){
+      world_force[2] = 0.05f;
+    }
+
+    World_to_Body(world_force, body_force, yaw_quaternion);
+    throttle_set = sqrt(body_force[0] * body_force[0] + body_force[1] * body_force[1] + body_force[2] * body_force[2]);
+	float norm_body_force[3];
+    float up_vector[3];
+//    norm_body_force[0] = body_force[0] / throttle_set;
+//    norm_body_force[1] = body_force[1] / throttle_set;
+    norm_body_force[2] = body_force[2] / throttle_set;
+//    std::cout << "norm_body_force: " << norm_body_force[2] << std::endl;
+    float theta = acos(norm_body_force[2]);
+//    std::cout << "theta = " << theta << std::endl;
+    float sin_half_theta = sin(theta/2.0f);
+    float cos_half_theta = cos(theta/2.0f);
+    float norm_xy = sqrt(body_force[0] * body_force[0] + body_force[1] * body_force[1]);
+//    Quaternion target_tilt;
+    target_quaternion.w = cos_half_theta;
+    target_quaternion.y = -sin_half_theta * body_force[0] / norm_xy;
+    target_quaternion.x = -sin_half_theta * body_force[1] / norm_xy;
+    target_quaternion.z = 0.0f;
+
+//    target_angle_roll = -atan2(body_force[1], body_force[2]);
+//    target_angle_pitch = -atan2(body_force[0], body_force[2]);
+//    target_angle_pitch = -atan2(body_force[1], body_force[2]);
+//    target_angle_roll = -asin(body_force[0] / throttle_set);
+//
+//    if(throttle_set > 1.0){
+//      throttle_set = 1.0;
+//    }
+//    if(target_angle_roll > 1.2){
+//      target_angle_roll = 1.2;
+//    }
+//    if(target_angle_roll < -1.2){
+//      target_angle_roll = -1.2;
+//    }
+//    if(target_angle_pitch > 1.2){
+//      target_angle_pitch = 1.2;
+//    }
+//    if(target_angle_pitch < -1.2){
+//      target_angle_pitch = -1.2;
+//    }
+//    std::cout<<ros::Time::now()<<std::endl;
 }
 
 void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
@@ -549,26 +749,30 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
     Quaternion de_yaw_quaternion = yaw_to_quaternion(-measure_yaw);
     Quaternion de_yaw_ahrs = multiply_quaternion(&de_yaw_quaternion, &measure_quaternion);
-    target_quaternion.w = 1.0f;
-	target_quaternion.x = 0.0f;
-	target_quaternion.y = 0.0f;
-	target_quaternion.z = 0.0f;
+
 
 	if(ctrl_mode == 1 and rc_mode == 1){
          target_angle_roll = rc_channel[0] * 1.5e-3;
          target_angle_pitch = rc_channel[1] * -1.5e-3;
          target_w_yaw = rc_channel[3] * -0.002341f;
-         throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
-	}
+         throttle_set = (rc_channel[2] / 2.0 + 500.0)/1000.0;
 
-    Quaternion temp_quaternion;
+         Quaternion temp_quaternion;
+    target_quaternion.w = 1.0f;
+	target_quaternion.x = 0.0f;
+	target_quaternion.y = 0.0f;
+	target_quaternion.z = 0.0f;
+
     temp_quaternion = pitch_to_quaternion(target_angle_pitch);
     target_quaternion = multiply_quaternion(&temp_quaternion, &target_quaternion);
 	temp_quaternion = roll_to_quaternion(target_angle_roll);
 	target_quaternion = multiply_quaternion(&target_quaternion, &temp_quaternion);
-    temp_quaternion = quaternion_diff(de_yaw_ahrs, target_quaternion);
+	}
+//	std::cout << target_quaternion.w << " " << target_quaternion.x << " " << target_quaternion.y << " " << target_quaternion.z << std::endl;
 
-	quaternionToAngles(temp_quaternion, &error_angle[0], &error_angle[1], &error_angle[2]);
+    Quaternion diff_quaternion = quaternion_diff(de_yaw_ahrs, target_quaternion);
+
+	quaternionToAngles(diff_quaternion, &error_angle[0], &error_angle[1], &error_angle[2]);
     if(isnan(error_angle[0])){
 		error_angle[0] = 0.0f;
 	}
@@ -616,7 +820,7 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 		target_velocity_roll = rc_channel[0] * 0.004;
 		target_velocity_pitch = rc_channel[1] * 0.004;
 		target_velocity_yaw = rc_channel[3] * -0.004;
-        throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
+        throttle_set = (rc_channel[2] / 2.0 + 500.0)/1000.0;
     }
 
     imu_roll = gyro_data[0];
@@ -629,7 +833,7 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	output_roll = pid_roll(target_velocity_roll, roll_in) / 500.0;
 	output_pitch = pid_pitch(target_velocity_pitch, pitch_in) / 500.0;
 	output_yaw = pid_yaw(target_velocity_yaw, yaw_in) / 500.0;
-//    std::cout<<output_roll<<" "<<output_pitch<<" "<<output_yaw<<std::endl;
+
 	float front_left_speed 	= 0.0 + output_roll - output_pitch + output_yaw + throttle_set;
     float front_right_speed = 0.0 - output_roll - output_pitch - output_yaw + throttle_set;
     float rear_left_speed 	= 0.0 + output_roll + output_pitch - output_yaw + throttle_set;
@@ -664,7 +868,11 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	pwm_cmd.rotorPWM1 = rear_left_speed;
 	pwm_cmd.rotorPWM2 = front_left_speed;
 	pwm_cmd.rotorPWM3 = rear_right_speed;
-	pwm_publisher.publish(pwm_cmd);
+    if(init_waiting > 0){
+    	ROS_INFO("UKF Waiting...");
+    }else{
+		pwm_publisher.publish(pwm_cmd);
+    }
 
 //	std_msgs::Float32 rate_msg;
 //	rate_msg.data = roll_in;
@@ -701,6 +909,9 @@ void BasicControl::channel6_callback(const std_msgs::Float32::ConstPtr& msg){
 }
 
 void BasicControl::rc_mode_check_callback(const ros::TimerEvent& event){
+  if(init_waiting > 0){
+    init_waiting--;
+  }
   int got_mode;
   ros::NodeHandle nh;
   nh.getParam("/custom_debug/rc_mode", got_mode);

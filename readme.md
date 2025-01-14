@@ -37,3 +37,7 @@ TODO:
 FAST-LIO sensor set ros::time
 IMU sensor set ros::time 
 UWB Pose2Odom
+
+目标速度 x y z
+实际速度 x y z
+目标姿态 加重力加速度
