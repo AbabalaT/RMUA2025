@@ -35,7 +35,7 @@ float w_yaw_body[3];
 float motor_idle_speed = 0.0;
 float motor_max_speed = 1000.0;
 
-float pid_N = 0.1f;//离散pid微分低通滤波
+float pid_N = 0.3f;//离散pid微分低通滤波
 float pid_N_v = 0.1f;
 
 long imu_t;
@@ -77,31 +77,31 @@ float kalman_yaw(float measure){
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 20.0;
-    mat_pid[0][2] = 6.0;
-	mat_pid[0][3] = 5.0;
+	mat_pid[0][1] = 27.0;
+    mat_pid[0][2] = 8.5;
+	mat_pid[0][3] = 4.0;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 20.0f;//697.6f;
-	mat_pid[1][2] = 6.0;
-	mat_pid[1][3] = 5.0;
+	mat_pid[1][1] = 27.0f;//697.6f;
+	mat_pid[1][2] = 8.5;
+	mat_pid[1][3] = 4.0;
 	
 	mat_pid[2][0] = 0.0;
 	mat_pid[2][1] = 100.0f;//139.53f;
 	mat_pid[2][2] = 60.0f;
 	mat_pid[2][3] = 24.0;
 	
-	angle_pid_mat[0][0] = 1.2;
-	angle_pid_mat[0][1] = 0.0001f;//0.00006;//232.55f;
-	angle_pid_mat[0][2] = 0.045f;
+	angle_pid_mat[0][0] = 1.5;
+	angle_pid_mat[0][1] = 0.00f;//0.00006;//232.55f;
+	angle_pid_mat[0][2] = 0.03f;
 
-	angle_pid_mat[1][0] = 1.2;
-	angle_pid_mat[1][1] = 0.0001f;//0.00002f;//697.6f;
-	angle_pid_mat[1][2] = 0.045f;
+	angle_pid_mat[1][0] = 1.5;
+	angle_pid_mat[1][1] = 0.00f;//0.00002f;//697.6f;
+	angle_pid_mat[1][2] = 0.03f;
 	
-	angle_pid_mat[2][0] = 1.2;
-	angle_pid_mat[2][1] = 0.0001f;//0.000045f;//139.53f;
-	angle_pid_mat[2][2] = 0.045f;
+	angle_pid_mat[2][0] = 1.5;
+	angle_pid_mat[2][1] = 0.00f;//0.000045f;//139.53f;
+	angle_pid_mat[2][2] = 0.03f;
 
 //	velocity_pid_mat[1][0] = 0.0; //horizen
 //	velocity_pid_mat[1][1] = 0.02f;//697.6f;
@@ -109,9 +109,9 @@ void pid_init(void){
 //	velocity_pid_mat[1][3] = 0.00004;//0.00004;
 
     velocity_pid_mat[1][0] = 0.0; //horizen
-	velocity_pid_mat[1][1] = 0.06f;//697.6f;
+	velocity_pid_mat[1][1] = 0.045f;//697.6f;
 	velocity_pid_mat[1][2] = 0.2;
-	velocity_pid_mat[1][3] = 0.16;//0.00004;
+	velocity_pid_mat[1][3] = 0.1;//0.00004;
 
 	velocity_pid_mat[2][0] = 0.0; //vertical
 	velocity_pid_mat[2][1] = 0.075f;//139.53f;
