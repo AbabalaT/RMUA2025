@@ -46,6 +46,7 @@ ros::Publisher lio_pub;
 ros::Publisher real_pose_pub;
 ros::Publisher pcl_pub;
 ros::Publisher ahrs_pub;
+ros::Publisher uwb_map_pub;
 
 float init_pose_x, init_pose_y, init_pose_z;
 
@@ -196,16 +197,16 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.z = world_quat.z;
     odom_msg.pose.pose.orientation.w = world_quat.w;
 
-    double conv_1 = 0.5f;
-    double conv_2 = 1.2f;
+    double conv_1 = 0.01f;
+    double conv_2 = 0.0f;
 
     for(int i = 0; i < 35; i++) {
-        odom_msg.pose.covariance[0] = 1e-8;
+        odom_msg.pose.covariance[0] = 0.0;
     }
 
     odom_msg.pose.covariance[0] = conv_1;
     odom_msg.pose.covariance[7] = conv_1;
-    odom_msg.pose.covariance[14] = 3.0;
+    odom_msg.pose.covariance[14] = conv_1;
     odom_msg.pose.covariance[21] = conv_2;
     odom_msg.pose.covariance[28] = conv_2;
     odom_msg.pose.covariance[35] = conv_2;
@@ -218,6 +219,8 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.twist.twist.angular.z = 0.0;
 
     odom_pub.publish(odom_msg);
+    odom_msg.header.frame_id = "map_odom";
+    uwb_map_pub.publish(odom_msg);
 }
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
@@ -238,15 +241,17 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.orientation.w = q_measure.w;
 
     double conv_1 = 0.05;
-    double conv_2 = 0.5;
-    double conv_3 = 3e-6;
-    double conv_4 = 3e-4;
+    double conv_2 = 0.25;
+    double conv_3 = 0.0;
+    double conv_4 = 0.0;
     new_msg.angular_velocity_covariance[0] = conv_1;
+
     new_msg.angular_velocity_covariance[1] = conv_3;
     new_msg.angular_velocity_covariance[2] = conv_3;
     new_msg.angular_velocity_covariance[3] = conv_3;
 
     new_msg.angular_velocity_covariance[4] = conv_1;
+
     new_msg.angular_velocity_covariance[5] = conv_3;
     new_msg.angular_velocity_covariance[6] = conv_3;
     new_msg.angular_velocity_covariance[7] = conv_3;
@@ -264,19 +269,26 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.linear_acceleration_covariance[6] = conv_4;
     new_msg.linear_acceleration_covariance[7] = conv_4;
 
-    MahonyAHRSupdateIMU(mahony_quaternion, new_msg.angular_velocity.x, new_msg.angular_velocity.y, new_msg.angular_velocity.z,
-                        new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
+//    MahonyAHRSupdateIMU(mahony_quaternion, new_msg.angular_velocity.x, new_msg.angular_velocity.y, new_msg.angular_velocity.z,
+//                        new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
 	//ROS_INFO("IMU quaternion: w: %f, x: %f, y:%f, z:%f", mahony_quaternion[0], mahony_quaternion[1], mahony_quaternion[2], mahony_quaternion[3]);
 
     tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z, new_msg.orientation.w);
     tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
     tf2::Vector3 acc_body(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+
     tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
     acc_world.setZ(acc_world.z() + 9.80);
     acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
+
     new_msg.linear_acceleration.x = acc_body.x();
     new_msg.linear_acceleration.y = acc_body.y();
     new_msg.linear_acceleration.z = acc_body.z();
+//
+//    double temp = new_msg.angular_velocity.x;
+//    new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
+//    new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
+
 
     imu_now_pub.publish(new_msg);
     Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
@@ -326,6 +338,7 @@ int main(int argc, char **argv) {
     real_pose_pub = pnh.advertise<nav_msgs::Odometry>("/debug/real_pose_odom", 10);
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
     ahrs_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/ahrs", 10);
+	uwb_map_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb2", 10);
 
     mahony_quaternion[0] = 1.0;
     mahony_quaternion[1] = 0.0;

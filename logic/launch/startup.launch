@@ -4,7 +4,7 @@
     <group if="$(eval arg('Rviz') == True)">
         <node name="rviz_main" pkg="rviz" type="rviz" args="-d $(find logic)/rviz/view1.rviz"/>
     </group>
-    <include file="$(find fast_lio)/launch/mapping_mid360.launch"/>
+
 <!--     <include file="$(find point_lio)/launch/mapping_avia.launch"/> -->
 <!--     <include file="$(find logic)/launch/logic.launch"/> -->
 <!--     <include file="$(find yolov5_ros)/launch/yolov5.launch"/> -->
@@ -14,4 +14,8 @@
 <!--     <include file="$(find tf_process)/launch/ukf2.launch"/> -->
 <!--     <include file="$(find pcl2process)/launch/pcl2pro.launch"/> -->
 <!--     <include file="$(find move_controller)/launch/move_base.launch"/> -->
+    <arg name="rviz" default="true" />
+    <group if="$(arg rviz)">
+	    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find fast_lio)/rviz_cfg/loam_livox.rviz" />
+	</group>
 </launch>
