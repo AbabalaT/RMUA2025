@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="robot_localization" type="ukf_localization_node" name="ekf_localization">
+    <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization">
 
       <param name="frequency" value="100"/>
 
@@ -35,7 +35,7 @@
       <param name="imu0_differential" value="true"/>
       <param name="odom1_differential" value="true"/>
 
-      <param name="imu0_remove_gravitational_acceleration" value="false"/>
+      <param name="imu0_remove_gravitational_acceleration" value="true"/>
 
 <!--       <param name="print_diagnostics" value="true"/> -->
     </node>

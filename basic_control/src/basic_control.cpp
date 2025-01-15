@@ -35,8 +35,8 @@ float w_yaw_body[3];
 float motor_idle_speed = 0.0;
 float motor_max_speed = 1000.0;
 
-float pid_N = 0.35f;//离散pid微分低通滤波
-float pid_N_v = 0.7f;
+float pid_N = 0.1f;//离散pid微分低通滤波
+float pid_N_v = 0.1f;
 
 long imu_t;
 long pose_t;
@@ -77,14 +77,14 @@ float kalman_yaw(float measure){
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 27.0;
-    mat_pid[0][2] = 8.5;
-	mat_pid[0][3] = 4.0;
+	mat_pid[0][1] = 20.0;
+    mat_pid[0][2] = 6.0;
+	mat_pid[0][3] = 5.0;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 27.0f;//697.6f;
-	mat_pid[1][2] = 8.5;
-	mat_pid[1][3] = 4.0;
+	mat_pid[1][1] = 20.0f;//697.6f;
+	mat_pid[1][2] = 6.0;
+	mat_pid[1][3] = 5.0;
 	
 	mat_pid[2][0] = 0.0;
 	mat_pid[2][1] = 100.0f;//139.53f;
@@ -109,9 +109,9 @@ void pid_init(void){
 //	velocity_pid_mat[1][3] = 0.00004;//0.00004;
 
     velocity_pid_mat[1][0] = 0.0; //horizen
-	velocity_pid_mat[1][1] = 0.05f;//697.6f;
-	velocity_pid_mat[1][2] = 0.08;
-	velocity_pid_mat[1][3] = 0.024;//0.00004;
+	velocity_pid_mat[1][1] = 0.06f;//697.6f;
+	velocity_pid_mat[1][2] = 0.2;
+	velocity_pid_mat[1][3] = 0.16;//0.00004;
 
 	velocity_pid_mat[2][0] = 0.0; //vertical
 	velocity_pid_mat[2][1] = 0.075f;//139.53f;
@@ -346,11 +346,11 @@ float pid_vx(float target, float real){
 	error = target - real;
 	sum = sum + error;
 
-	if(sum > 2000.0f){
-		sum = 2000.0;
+	if(sum > 4000.0f){
+		sum = 4000.0;
 	}
-	if(sum < -2000.0f){
-		sum = -2000.0;
+	if(sum < -4000.0f){
+		sum = -4000.0;
 	}
 	if(error > 50.0f){
 		sum = 0.0f;
@@ -385,11 +385,11 @@ float pid_vy(float target, float real){
 	error = target - real;
 	sum = sum + error;
 
-	if(sum > 2000.0f){
-		sum = 2000.0;
+	if(sum > 4000.0f){
+		sum = 4000.0;
 	}
-	if(sum < -2000.0f){
-		sum = -2000.0;
+	if(sum < -4000.0f){
+		sum = -4000.0;
 	}
 	if(error > 50.0f){
 		sum = 0.0f;
@@ -755,7 +755,7 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
          target_angle_roll = rc_channel[0] * 1.5e-3;
          target_angle_pitch = rc_channel[1] * -1.5e-3;
          target_w_yaw = rc_channel[3] * -0.002341f;
-         throttle_set = (rc_channel[2] / 2.0 + 500.0)/1000.0;
+         throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
 
          Quaternion temp_quaternion;
     target_quaternion.w = 1.0f;
@@ -820,7 +820,7 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 		target_velocity_roll = rc_channel[0] * 0.004;
 		target_velocity_pitch = rc_channel[1] * 0.004;
 		target_velocity_yaw = rc_channel[3] * -0.004;
-        throttle_set = (rc_channel[2] / 2.0 + 500.0)/1000.0;
+        throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
     }
 
     imu_roll = gyro_data[0];
