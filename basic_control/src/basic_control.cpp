@@ -82,42 +82,36 @@ void pid_init(void){
 	mat_pid[0][3] = 4.0;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 27.0f;//697.6f;
+	mat_pid[1][1] = 27.0f;
 	mat_pid[1][2] = 8.5;
 	mat_pid[1][3] = 4.0;
 	
 	mat_pid[2][0] = 0.0;
-	mat_pid[2][1] = 100.0f;//139.53f;
+	mat_pid[2][1] = 100.0f;
 	mat_pid[2][2] = 60.0f;
 	mat_pid[2][3] = 24.0;
 	
 	angle_pid_mat[0][0] = 1.5;
-	angle_pid_mat[0][1] = 0.00f;//0.00006;//232.55f;
+	angle_pid_mat[0][1] = 0.00f;
 	angle_pid_mat[0][2] = 0.03f;
 
 	angle_pid_mat[1][0] = 1.5;
-	angle_pid_mat[1][1] = 0.00f;//0.00002f;//697.6f;
+	angle_pid_mat[1][1] = 0.00f;
 	angle_pid_mat[1][2] = 0.03f;
 	
 	angle_pid_mat[2][0] = 1.5;
-	angle_pid_mat[2][1] = 0.00f;//0.000045f;//139.53f;
+	angle_pid_mat[2][1] = 0.00f;
 	angle_pid_mat[2][2] = 0.03f;
 
-//	velocity_pid_mat[1][0] = 0.0; //horizen
-//	velocity_pid_mat[1][1] = 0.02f;//697.6f;
-//	velocity_pid_mat[1][2] = 0.002;
-//	velocity_pid_mat[1][3] = 0.00004;//0.00004;
+    velocity_pid_mat[1][0] = 0.0;
+	velocity_pid_mat[1][1] = 0.016f;
+	velocity_pid_mat[1][2] = 0.178;
+	velocity_pid_mat[1][3] = 0.0072;
 
-    velocity_pid_mat[1][0] = 0.0; //horizen
-	velocity_pid_mat[1][1] = 0.045f;//697.6f;
-	velocity_pid_mat[1][2] = 0.2;
-	velocity_pid_mat[1][3] = 0.05;//0.00004;
-
-
-	velocity_pid_mat[2][0] = 0.0; //vertical
-	velocity_pid_mat[2][1] = 0.045f;//139.53f;
-	velocity_pid_mat[2][2] = 0.2f;
-	velocity_pid_mat[2][3] = 0.05f;//0.015;
+	velocity_pid_mat[2][0] = 0.0;
+	velocity_pid_mat[2][1] = 0.0172f;
+	velocity_pid_mat[2][2] = 0.18f;
+	velocity_pid_mat[2][3] = 0.007f;
 }
 
 float pid_roll(float target, float real){
@@ -346,20 +340,20 @@ float pid_vx(float target, float real){
 
 	error = target - real;
 
-    if(error > 2.0f){
-    	error_rate = 2.0f;
+    if(error > 4.0f){
+    	error_rate = 4.0f;
     }
-    if(error < -2.0f){
-      error_rate = -2.0f;
+    if(error < -4.0f){
+      error_rate = -4.0f;
     }
 
 	sum = sum + error;
 
-	if(sum > 4000.0f){
-		sum = 4000.0;
+	if(sum > 400.0f){
+		sum = 400.0;
 	}
-	if(sum < -4000.0f){
-		sum = -4000.0;
+	if(sum < -400.0f){
+		sum = -400.0;
 	}
 	if(error > 50.0f){
 		sum = 0.0f;
@@ -370,6 +364,13 @@ float pid_vx(float target, float real){
 	if(init_waiting > 0){
 		sum = 0.0f;
 	}
+
+    if(rc_mode != 0){
+      if(ctrl_mode != 2){
+        sum = 0.0f;
+      }
+    }
+
 	d_error = 0.0 - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
@@ -393,20 +394,20 @@ float pid_vy(float target, float real){
 
 	error = target - real;
 
-    if(error > 2.0f){
-    	error_rate = 2.0f;
+    if(error > 4.0f){
+    	error_rate = 4.0f;
     }
-    if(error < -2.0f){
-      error_rate = -2.0f;
+    if(error < -4.0f){
+      error_rate = -4.0f;
     }
 
 	sum = sum + error;
 
-	if(sum > 4000.0f){
-		sum = 4000.0;
+	if(sum > 400.0f){
+		sum = 400.0;
 	}
-	if(sum < -4000.0f){
-		sum = -4000.0;
+	if(sum < -400.0f){
+		sum = -400.0;
 	}
 	if(error > 50.0f){
 		sum = 0.0f;
@@ -417,6 +418,12 @@ float pid_vy(float target, float real){
 	if(init_waiting > 0){
 		sum = 0.0f;
 	}
+    if(rc_mode != 0){
+      if(ctrl_mode != 2){
+        sum = 0.0f;
+      }
+    }
+
 	d_error = 0.0 - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
@@ -456,6 +463,11 @@ float pid_vz(float target, float real){
 	if(init_waiting > 0){
 		sum = 0.0f;
 	}
+    if(rc_mode != 0){
+      if(ctrl_mode != 2){
+        sum = 0.0f;
+      }
+    }
 	d_error = 0.0 - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
