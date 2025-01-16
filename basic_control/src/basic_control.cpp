@@ -104,13 +104,13 @@ void pid_init(void){
 	angle_pid_mat[2][2] = 0.03f;
 
     velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.012f;
-	velocity_pid_mat[1][2] = 0.16;
+	velocity_pid_mat[1][1] = 0.011f;
+	velocity_pid_mat[1][2] = 0.4;
 	velocity_pid_mat[1][3] = 0.035;
 
 	velocity_pid_mat[2][0] = 0.0;
-	velocity_pid_mat[2][1] = 0.012f;
-	velocity_pid_mat[2][2] = 0.16f;
+	velocity_pid_mat[2][1] = 0.015f;
+	velocity_pid_mat[2][2] = 0.4f;
 	velocity_pid_mat[2][3] = 0.035f;
 }
 
