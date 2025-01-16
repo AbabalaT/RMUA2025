@@ -282,12 +282,12 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
 
     new_msg.linear_acceleration.x = acc_body.x();
-    new_msg.linear_acceleration.y = acc_body.y();
-    new_msg.linear_acceleration.z = acc_body.z();
+    new_msg.linear_acceleration.y = -acc_body.y();
+    new_msg.linear_acceleration.z = -acc_body.z();
 //
 //    double temp = new_msg.angular_velocity.x;
-//    new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
-//    new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
+    new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
+    new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
 
 
     imu_now_pub.publish(new_msg);

@@ -16,7 +16,7 @@ float mat_pid[4][4];	//R-P-Y-throttle
 float angle_pid_mat[3][3];
 double velocity_pid_mat[4][4];
 
-int init_waiting = 25;
+int init_waiting = 30;
 
 float throttle_set = 0.0f;
 
@@ -109,19 +109,15 @@ void pid_init(void){
 //	velocity_pid_mat[1][3] = 0.00004;//0.00004;
 
     velocity_pid_mat[1][0] = 0.0; //horizen
-	velocity_pid_mat[1][1] = 0.06f;//697.6f;
-	velocity_pid_mat[1][2] = 0.0;
-	velocity_pid_mat[1][3] = -0.01;//0.00004;
+	velocity_pid_mat[1][1] = 0.045f;//697.6f;
+	velocity_pid_mat[1][2] = 0.2;
+	velocity_pid_mat[1][3] = 0.05;//0.00004;
 
-//    velocity_pid_mat[1][0] = 0.0; //horizen
-//	velocity_pid_mat[1][1] = 0.08f;//697.6f;
-//	velocity_pid_mat[1][2] = 0.2;
-//	velocity_pid_mat[1][3] = 0.1;//0.00004;
 
 	velocity_pid_mat[2][0] = 0.0; //vertical
-	velocity_pid_mat[2][1] = 0.075f;//139.53f;
-	velocity_pid_mat[2][2] = 0.5f;
-	velocity_pid_mat[2][3] = 0.015f;//0.015;
+	velocity_pid_mat[2][1] = 0.045f;//139.53f;
+	velocity_pid_mat[2][2] = 0.2f;
+	velocity_pid_mat[2][3] = 0.05f;//0.015;
 }
 
 float pid_roll(float target, float real){
@@ -350,13 +346,13 @@ float pid_vx(float target, float real){
 
 	error = target - real;
 
+    if(error > 2.0f){
+    	error_rate = 2.0f;
+    }
+    if(error < -2.0f){
+      error_rate = -2.0f;
+    }
 
-    if(error > 5.0f){
-    	error_rate = 5.0f;
-    }
-    if(error < -5.0f){
-      error_rate = -5.0f;
-    }
 	sum = sum + error;
 
 	if(sum > 4000.0f){
@@ -397,11 +393,11 @@ float pid_vy(float target, float real){
 
 	error = target - real;
 
-    if(error > 5.0f){
-    	error_rate = 5.0f;
+    if(error > 2.0f){
+    	error_rate = 2.0f;
     }
-    if(error < -5.0f){
-      error_rate = -5.0f;
+    if(error < -2.0f){
+      error_rate = -2.0f;
     }
 
 	sum = sum + error;
@@ -690,6 +686,13 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
 	odom_pose.y = msg->pose.pose.orientation.y;
 	odom_pose.z = msg->pose.pose.orientation.z;
 
+    float measure_yaw = 0.0f;
+	measure_yaw = atan2(2.0 * (odom_pose.w * odom_pose.z + odom_pose.x * odom_pose.y),
+		1.0 - 2.0 * (odom_pose.y * odom_pose.y + odom_pose.z * odom_pose.z));
+	Quaternion yaw_quaternion = yaw_to_quaternion(measure_yaw);
+    Quaternion body_to_yaw = yaw_to_quaternion(-measure_yaw);
+    Quaternion de_yaw_ahrs = multiply_quaternion(&body_to_yaw, &odom_pose);
+
     Quaternion body_to_world = quaternion_conjugate(odom_pose);
     float world_measure_vel[3];
 	World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
@@ -698,12 +701,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
 //    world_measure_vel[1] = -body_measure_vel[0];
 //    world_measure_vel[2] = body_measure_vel[2];
 
-	float measure_yaw = 0.0f;
-	measure_yaw = atan2(2.0 * (odom_pose.w * odom_pose.z + odom_pose.x * odom_pose.y),
-		1.0 - 2.0 * (odom_pose.y * odom_pose.y + odom_pose.z * odom_pose.z));
-	Quaternion yaw_quaternion = yaw_to_quaternion(measure_yaw);
-    Quaternion body_to_yaw = yaw_to_quaternion(-measure_yaw);
-    Quaternion de_yaw_ahrs = multiply_quaternion(&body_to_yaw, &odom_pose);
+
     float world_target_vel[3];
 	World_to_Body(target_vel_body, world_target_vel, body_to_yaw);
 
@@ -714,9 +712,23 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     world_force[1] = pid_vy(world_target_vel[1], world_measure_vel[1]);
 	world_force[2] = pid_vz(world_target_vel[2], world_measure_vel[2]);
 
+	std_msgs::Float32 rate_msg;
+	rate_msg.data = world_measure_vel[0];
+	rate_x_real_publisher.publish(rate_msg);
+    rate_msg.data = world_measure_vel[1];
+    rate_y_real_publisher.publish(rate_msg);
+    rate_msg.data = world_measure_vel[2];
+    rate_z_real_publisher.publish(rate_msg);
+    rate_msg.data = world_target_vel[0];
+    rate_x_target_publisher.publish(rate_msg);
+    rate_msg.data = world_target_vel[1];
+    rate_y_target_publisher.publish(rate_msg);
+    rate_msg.data = world_target_vel[2];
+    rate_z_target_publisher.publish(rate_msg);
+
     world_force[2] = world_force[2] + hover_throttle;
-    if(world_force[2] < 0.05f){
-      world_force[2] = 0.05f;
+    if(world_force[2] < 0.01f){
+      world_force[2] = 0.01f;
     }
 
     World_to_Body(world_force, body_force, yaw_quaternion);
@@ -745,7 +757,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     World_to_Body(up_vector, norm_tilt_vector, de_yaw_ahrs);
     float cos_error = norm_tilt_vector[0] * norm_body_force[0] + norm_tilt_vector[1] * norm_body_force[1] + norm_tilt_vector[2] * norm_body_force[2];
 
-    throttle_set = throttle_set * pow(cos_error, 0.5 * throttle_set);
+    throttle_set = throttle_set * pow(cos_error, 0.25);// * throttle_set);
 
     if(throttle_set > 1.0){
       throttle_set = 1.0;
@@ -890,20 +902,6 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     }else{
 		pwm_publisher.publish(pwm_cmd);
     }
-
-//	std_msgs::Float32 rate_msg;
-//	rate_msg.data = roll_in;
-//	rate_x_real_publisher.publish(rate_msg);
-//    rate_msg.data = pitch_in;
-//    rate_y_real_publisher.publish(rate_msg);
-//    rate_msg.data = yaw_in;
-//    rate_z_real_publisher.publish(rate_msg);
-//    rate_msg.data = target_velocity_roll;
-//    rate_x_target_publisher.publish(rate_msg);
-//    rate_msg.data = target_velocity_pitch;
-//    rate_y_target_publisher.publish(rate_msg);
-//    rate_msg.data = target_velocity_yaw;
-//    rate_z_target_publisher.publish(rate_msg);
 }
 
 void BasicControl::channel1_callback(const std_msgs::Float32::ConstPtr& msg){
