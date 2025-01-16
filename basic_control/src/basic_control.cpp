@@ -36,7 +36,7 @@ float motor_idle_speed = 0.0;
 float motor_max_speed = 1000.0;
 
 float pid_N = 0.8f;//离散pid微分低通滤波
-float pid_N_v = 0.8f;
+float pid_N_v = 0.9f;
 
 long imu_t;
 long pose_t;
@@ -104,14 +104,14 @@ void pid_init(void){
 	angle_pid_mat[2][2] = 0.03f;
 
     velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.016f;
-	velocity_pid_mat[1][2] = 0.178;
-	velocity_pid_mat[1][3] = 0.0072;
+	velocity_pid_mat[1][1] = 0.012f;
+	velocity_pid_mat[1][2] = 0.16;
+	velocity_pid_mat[1][3] = 0.035;
 
 	velocity_pid_mat[2][0] = 0.0;
-	velocity_pid_mat[2][1] = 0.0172f;
-	velocity_pid_mat[2][2] = 0.18f;
-	velocity_pid_mat[2][3] = 0.007f;
+	velocity_pid_mat[2][1] = 0.012f;
+	velocity_pid_mat[2][2] = 0.16f;
+	velocity_pid_mat[2][3] = 0.035f;
 }
 
 float pid_roll(float target, float real){
@@ -349,11 +349,11 @@ float pid_vx(float target, float real){
 
 	sum = sum + error;
 
-	if(sum > 400.0f){
-		sum = 400.0;
+	if(sum > 200.0f){
+		sum = 200.0;
 	}
-	if(sum < -400.0f){
-		sum = -400.0;
+	if(sum < -200.0f){
+		sum = -200.0;
 	}
 	if(error > 50.0f){
 		sum = 0.0f;
@@ -371,7 +371,7 @@ float pid_vx(float target, float real){
       }
     }
 
-	d_error = 0.0 - real;
+	d_error = target - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
 
@@ -403,11 +403,11 @@ float pid_vy(float target, float real){
 
 	sum = sum + error;
 
-	if(sum > 400.0f){
-		sum = 400.0;
+	if(sum > 200.0f){
+		sum = 200.0;
 	}
-	if(sum < -400.0f){
-		sum = -400.0;
+	if(sum < -200.0f){
+		sum = -200.0;
 	}
 	if(error > 50.0f){
 		sum = 0.0f;
@@ -424,7 +424,7 @@ float pid_vy(float target, float real){
       }
     }
 
-	d_error = 0.0 - real;
+	d_error = target - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
 
@@ -448,11 +448,11 @@ float pid_vz(float target, float real){
 	error = target - real;
 	sum = sum + error;
 
-	if(sum > 2000.0f){
-		sum = 2000.0;
+	if(sum > 200.0f){
+		sum = 200.0;
 	}
-	if(sum < -2000.0f){
-		sum = -2000.0;
+	if(sum < -200.0f){
+		sum = -200.0;
 	}
 	if(error > 50.0f){
 		sum = 0.0f;
