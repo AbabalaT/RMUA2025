@@ -91,27 +91,32 @@ void pid_init(void){
 	mat_pid[2][2] = 60.0f;
 	mat_pid[2][3] = 24.0;
 	
-	angle_pid_mat[0][0] = 1.5;
+	angle_pid_mat[0][0] = 2.0;
 	angle_pid_mat[0][1] = 0.00f;
-	angle_pid_mat[0][2] = 0.03f;
+	angle_pid_mat[0][2] = 0.01f;
 
-	angle_pid_mat[1][0] = 1.5;
+	angle_pid_mat[1][0] = 2.0;
 	angle_pid_mat[1][1] = 0.00f;
-	angle_pid_mat[1][2] = 0.03f;
+	angle_pid_mat[1][2] = 0.01f;
 	
-	angle_pid_mat[2][0] = 1.5;
+	angle_pid_mat[2][0] = 2.0;
 	angle_pid_mat[2][1] = 0.00f;
-	angle_pid_mat[2][2] = 0.03f;
+	angle_pid_mat[2][2] = 0.01f;
 
     velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.011f;
-	velocity_pid_mat[1][2] = 0.4;
-	velocity_pid_mat[1][3] = 0.035;
+	velocity_pid_mat[1][1] = 0.0128f;
+	velocity_pid_mat[1][2] = 0.16;
+	velocity_pid_mat[1][3] = 0.008;
 
-	velocity_pid_mat[2][0] = 0.0;
-	velocity_pid_mat[2][1] = 0.015f;
-	velocity_pid_mat[2][2] = 0.4f;
-	velocity_pid_mat[2][3] = 0.035f;
+//	velocity_pid_mat[2][0] = 0.0;
+//	velocity_pid_mat[2][1] = 0.014f;
+//	velocity_pid_mat[2][2] = 0.18f;
+//	velocity_pid_mat[2][3] = 0.03f;
+
+//    velocity_pid_mat[2][0] = 0.1;
+//	velocity_pid_mat[2][1] = 0.0f;
+//	velocity_pid_mat[2][2] = 0.0f;
+//	velocity_pid_mat[2][3] = 0.0f;
 }
 
 float pid_roll(float target, float real){
@@ -340,21 +345,22 @@ float pid_vx(float target, float real){
 
 	error = target - real;
 
-    if(error > 4.0f){
-    	error_rate = 4.0f;
+    if(error > 10.0f){
+    	error_rate = 10.0f;
     }
-    if(error < -4.0f){
-      error_rate = -4.0f;
+    if(error < -10.0f){
+      error_rate = -10.0f;
     }
 
 	sum = sum + error;
 
-	if(sum > 200.0f){
-		sum = 200.0;
+	if(sum > 400.0f){
+		sum = 400.0;
 	}
-	if(sum < -200.0f){
-		sum = -200.0;
+	if(sum < -400.0f){
+		sum = -400.0;
 	}
+
 	if(error > 50.0f){
 		sum = 0.0f;
 	}
@@ -394,21 +400,22 @@ float pid_vy(float target, float real){
 
 	error = target - real;
 
-    if(error > 4.0f){
-    	error_rate = 4.0f;
+    if(error > 10.0f){
+    	error_rate = 10.0f;
     }
-    if(error < -4.0f){
-      error_rate = -4.0f;
+    if(error < -10.0f){
+      error_rate = -10.0f;
     }
 
 	sum = sum + error;
 
-	if(sum > 200.0f){
-		sum = 200.0;
+	if(sum > 400.0f){
+		sum = 400.0;
 	}
-	if(sum < -200.0f){
-		sum = -200.0;
+	if(sum < -400.0f){
+		sum = -400.0;
 	}
+
 	if(error > 50.0f){
 		sum = 0.0f;
 	}
@@ -446,20 +453,30 @@ float pid_vz(float target, float real){
 	static float d_error;
 
 	error = target - real;
-	sum = sum + error;
 
-	if(sum > 200.0f){
-		sum = 200.0;
+	if(error > 10.0f){
+    	error_rate = 10.0f;
+    }
+    if(error < -10.0f){
+      error_rate = -10.0f;
+    }
+
+    sum = sum + error;
+
+	if(sum > 400.0f){
+		sum = 400.0;
 	}
-	if(sum < -200.0f){
-		sum = -200.0;
+	if(sum < -400.0f){
+		sum = -400.0;
 	}
+
 	if(error > 50.0f){
 		sum = 0.0f;
 	}
 	if(error < -50.0f){
 		sum = 0.0f;
 	}
+
 	if(init_waiting > 0){
 		sum = 0.0f;
 	}
@@ -468,14 +485,15 @@ float pid_vz(float target, float real){
         sum = 0.0f;
       }
     }
-	d_error = 0.0 - real;
+
+	d_error = target - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
 
 	d_out =  pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
 	d_out_1 = d_out;
 
-	result = velocity_pid_mat[2][0]*target + velocity_pid_mat[2][1]*(error + velocity_pid_mat[2][2]*sum*0.01 + velocity_pid_mat[2][3]*d_out / 0.01);
+	result = velocity_pid_mat[1][0]*target + velocity_pid_mat[1][1]*(error + velocity_pid_mat[1][2]*sum*0.01 + velocity_pid_mat[1][3]*d_out / 0.01);
 	return result;
 }
 
@@ -741,6 +759,15 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     world_force[2] = world_force[2] + hover_throttle;
     if(world_force[2] < 0.01f){
       world_force[2] = 0.01f;
+    }
+    if(world_force[2] > 1.0f){
+      world_force[2] = 1.0f;
+    }
+
+    if(world_force[0] * world_force[0] + world_force[1] * world_force[1] > 1.0 - world_force[2] * world_force[2]){
+      float factor = (1.0 - world_force[2] * world_force[2])/(world_force[0] * world_force[0] + world_force[1] * world_force[1]);
+	  world_force[0] *= factor;
+      world_force[1] *= factor;
     }
 
     World_to_Body(world_force, body_force, yaw_quaternion);
