@@ -44,6 +44,7 @@ private:
     ros::Publisher rate_z_real_publisher;
 
     ros::Timer rc_mode_timer;
+    ros::Timer pwm_send_timer;
 
     void channel1_callback(const std_msgs::Float32::ConstPtr& msg);
     void channel2_callback(const std_msgs::Float32::ConstPtr& msg);
@@ -53,6 +54,7 @@ private:
     void channel6_callback(const std_msgs::Float32::ConstPtr& msg);
 	void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void rc_mode_check_callback(const ros::TimerEvent& event);
+	void pwm_send_callback(const ros::TimerEvent& event);
 
     void imuCallback(const sensor_msgs::Imu::ConstPtr& msg);
 

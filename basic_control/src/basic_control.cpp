@@ -16,12 +16,12 @@ float mat_pid[4][4];	//R-P-Y-throttle
 float angle_pid_mat[3][3];
 double velocity_pid_mat[4][4];
 
-int init_waiting = 30;
+int init_waiting = 600;
 
 float throttle_set = 0.0f;
 
-float kalman_q = 5000.0f;
-float kalman_r = 10000000.0f;
+double kalman_q = 5000.0;
+double kalman_r = 10000000.0;
 
 float u_real_roll = 0.0f;
 float u_real_pitch = 0.0f;
@@ -32,25 +32,29 @@ float gyro_data[3], angle_data[3];
 float w_yaw_world[3];
 float w_yaw_body[3];
 
-float motor_idle_speed = 0.0;
-float motor_max_speed = 1000.0;
+float motor_idle_speed = 0.005;
+float motor_max_speed = 0.995;
 
-float pid_N = 0.8f;//离散pid微分低通滤波
+float pid_N = 0.5f;//离散pid微分低通滤波
 float pid_N_v = 0.9f;
 
 long imu_t;
 long pose_t;
 long pre_imu_sec, pre_imu_nsec, pre_pose_sec, pre_pose_nsec;
 
-float kalman_roll(float measure){
-	static float x;
-	static float p;
-	static float k;
+double kalman_roll(float measure){
+	static double x;
+	static double p;
+	static double k;
 	p = p + kalman_q;
 	k = p / (p + kalman_r);
 	x = x + k * (measure - x);
-	p = (1.0f - k) * p;
-	return x;	
+	p = (1.0 - k) * p;
+
+
+//    return x;
+	return measure;
+
 }
 
 float kalman_pitch(float measure){
@@ -61,7 +65,8 @@ float kalman_pitch(float measure){
 	k = p / (p + kalman_r);
 	x = x + k * (measure - x);
 	p = (1.0f - k) * p;
-	return x;	
+//	return x;
+    return measure;
 }
 
 float kalman_yaw(float measure){
@@ -72,51 +77,47 @@ float kalman_yaw(float measure){
 	k = p / (p + kalman_r);
 	x = x + k * (measure - x);
 	p = (1.0f - k) * p;
-	return x;	
+//	return x;
+	return measure;
 }
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 27.0;
-    mat_pid[0][2] = 8.5;
-	mat_pid[0][3] = 4.0;
+	mat_pid[0][1] = 8.4;
+    mat_pid[0][2] = 96.0;
+	mat_pid[0][3] = 0.07;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 27.0f;
-	mat_pid[1][2] = 8.5;
-	mat_pid[1][3] = 4.0;
+	mat_pid[1][1] = 8.8f;
+	mat_pid[1][2] = 96.0;
+	mat_pid[1][3] = 0.07;
 	
 	mat_pid[2][0] = 0.0;
-	mat_pid[2][1] = 100.0f;
-	mat_pid[2][2] = 60.0f;
-	mat_pid[2][3] = 24.0;
+	mat_pid[2][1] = 120.0f;
+	mat_pid[2][2] = 0.0f;
+	mat_pid[2][3] = 0.0;
 	
-	angle_pid_mat[0][0] = 2.0;
-	angle_pid_mat[0][1] = 0.00f;
-	angle_pid_mat[0][2] = 0.01f;
+	angle_pid_mat[0][0] = 3.5;
+	angle_pid_mat[0][1] = 0.0f;
+	angle_pid_mat[0][2] = 0.07f;
 
-	angle_pid_mat[1][0] = 2.0;
-	angle_pid_mat[1][1] = 0.00f;
-	angle_pid_mat[1][2] = 0.01f;
+	angle_pid_mat[1][0] = 3.5;
+	angle_pid_mat[1][1] = 0.0f;
+	angle_pid_mat[1][2] = 0.07f;
 	
-	angle_pid_mat[2][0] = 2.0;
-	angle_pid_mat[2][1] = 0.00f;
-	angle_pid_mat[2][2] = 0.01f;
+	angle_pid_mat[2][0] = 3.5;
+	angle_pid_mat[2][1] = 0.0f;
+	angle_pid_mat[2][2] = 0.07f;
 
     velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.0128f;
-	velocity_pid_mat[1][2] = 0.16;
-	velocity_pid_mat[1][3] = 0.008;
+	velocity_pid_mat[1][1] = 0.0124f;
+	velocity_pid_mat[1][2] = 0.12;
+	velocity_pid_mat[1][3] = 0.032;
 
-//	velocity_pid_mat[2][0] = 0.0;
-//	velocity_pid_mat[2][1] = 0.014f;
-//	velocity_pid_mat[2][2] = 0.18f;
-//	velocity_pid_mat[2][3] = 0.03f;
-
-//    velocity_pid_mat[2][0] = 0.1;
-//	velocity_pid_mat[2][1] = 0.0f;
-//	velocity_pid_mat[2][2] = 0.0f;
-//	velocity_pid_mat[2][3] = 0.0f;
+    velocity_pid_mat[2][0] = 0.0;
+	velocity_pid_mat[2][1] = 0.014f;
+	velocity_pid_mat[2][2] = 0.14f;
+	velocity_pid_mat[2][3] = 0.008f;
 }
 
 float pid_roll(float target, float real){
@@ -130,35 +131,60 @@ float pid_roll(float target, float real){
 	static float d_error;
 
 	error = target - real;
-	error = target - real;
 	sum = sum + error;
 
-	if(sum > 10000.0f){
-		sum = 10000.0;
+	if(sum > 8.5f){
+		sum = 0.0;
 	}
-	if(sum < -10000.0f){
-		sum = -10000.0;
+	if(sum < -8.5f){
+		sum = -0.0;
 	}
-	if(error > 10.0f){
+
+	if(error > 8.0f){
 		sum = 0.0f;
 	}
-	if(error < -10.0f){
+	if(error < -8.0f){
 		sum = 0.0f;
 	}
-	if(throttle_set < 0.010f){
-		sum = 0.0f;
-	}
+
 	if(init_waiting > 0){
-          sum = 0.0f;
+		sum = 0.0f;
 	}
+	if(error < -7.2f){
+		sum = 0.0f;
+	}
+	if(throttle_set < 0.03f){
+		sum = 0.0f;
+	}
+
 	d_error = 0.0f - real;
 	error_rate = d_error - pre_error;
+
+	if(error_rate > 0.5f){
+      error_rate = 0.2f;
+    }
+    if(error_rate < -0.5f){
+      error_rate = -0.2;
+    }
+
 	pre_error = d_error;
 
 	d_out =  pid_N * error_rate + (1.0f - pid_N) * d_out_1;
 	d_out_1 = d_out;
 
-	result = mat_pid[0][0]*target + mat_pid[0][1]*error + mat_pid[0][2]*sum*0.01 + mat_pid[0][3]*d_out / 0.01;
+    static float max_i;
+    static float max_d;
+
+    if(sum > max_i){
+      max_i = sum;
+    }
+    if(error_rate > max_d){
+      max_d = error_rate;
+    }
+
+//    std::cout<<"real: "<<real<<" "<<"target: "<<target<<" "<<"sum = "<<sum<<" "<<"d_out_1 = "<<d_out<<std::endl;
+//    std::cout<<"throttle"<<throttle_set<<std::endl;
+	result = mat_pid[0][0]*target + mat_pid[0][1]*error + mat_pid[0][2]*sum*0.01 + mat_pid[0][3]*d_out * 100.0f;
 	return result;
 }
 
@@ -175,15 +201,20 @@ float pid_pitch(float target, float real){
 	error = target - real;
 	sum = sum + error;
 
-	if(sum > 10000.0f){
-		sum = 10000.0;
+	if(sum > 8.5f){
+		sum = 0.0;
 	}
-	if(sum < -10000.0f){
-		sum = -10000.0;
+	if(sum < -8.5f){
+		sum = -0.0;
 	}
-	if(error > 7.2f){
+
+	if(error > 8.0f){
 		sum = 0.0f;
 	}
+	if(error < -8.0f){
+		sum = 0.0f;
+	}
+
 	if(init_waiting > 0){
 		sum = 0.0f;
 	}
@@ -196,6 +227,14 @@ float pid_pitch(float target, float real){
 
 	d_error = 0.0f - real;
 	error_rate = d_error - pre_error;
+
+	if(error_rate > 0.7f){
+      error_rate = 0.0f;
+    }
+    if(error_rate < -0.7f){
+      error_rate = -0.0;
+    }
+
 	pre_error = d_error;
 
 	d_out =  pid_N * error_rate + (1.0f - pid_N) * d_out_1;
@@ -216,16 +255,21 @@ float pid_yaw(float target, float real){
 	static float d_error;
 
 	error = target - real;
+
 	sum = sum + error;
 
-	if(sum > 10000.0f){
-		sum = 10000.0;
+	if(sum > 8.5f){
+		sum = 0.0;
 	}
-	if(init_waiting > 0){
+	if(sum < -8.5f){
+		sum = -0.0;
+	}
+
+	if(error > 8.0f){
 		sum = 0.0f;
 	}
-	if(sum < -10000.0f){
-		sum = -10000.0;
+	if(error < -8.0f){
+		sum = 0.0f;
 	}
 
 	if(throttle_set < 0.010f){
@@ -234,6 +278,14 @@ float pid_yaw(float target, float real){
 
 	d_error = 0.0f - real;
 	error_rate = d_error - pre_error;
+
+    if(error_rate > 0.7f){
+      error_rate = 0.0f;
+    }
+    if(error_rate < -0.7f){
+      error_rate = -0.0;
+    }
+
 	pre_error = d_error;
 
 	d_out =  pid_N * error_rate + (1.0f - pid_N) * d_out_1;
@@ -249,11 +301,11 @@ float pid_angle_roll(float error){
 	static float result;
 	static float error_rate;
 	sum = sum + error;
-	if(sum > 25000.0f){
-		sum = 25000.0f;
+	if(sum > 25.0f){
+		sum = 25.0f;
 	}
-	if(sum < -25000.0f){
-		sum = -25000.0f;
+	if(sum < -25.0f){
+		sum = -25.0f;
 	}
 	if(error > 45.0f){
 		sum = 0.0f;
@@ -268,6 +320,7 @@ float pid_angle_roll(float error){
 		sum = 0.0f;
 	}
 	error_rate = error - pre_error;
+
 	pre_error = error;
 	result = angle_pid_mat[0][0]*error + angle_pid_mat[0][1] * 0.01 * sum + angle_pid_mat[0][2] / 0.01 * error_rate;
 	return result;
@@ -279,11 +332,11 @@ float pid_angle_pitch(float error){
 	static float result;
 	static float error_rate;
 	sum = sum + error;
-	if(sum > 25000.0f){
-		sum = 25000.0;
+	if(sum > 25.0f){
+		sum = 25.0f;
 	}
-	if(sum < -25000.0f){
-		sum = -25000.0;
+	if(sum < -25.0f){
+		sum = -25.0f;
 	}
 	if(error > 45.0f){
 		sum = 0.0f;
@@ -309,11 +362,11 @@ float pid_angle_yaw(float error){
 	static float result;
 	static float error_rate;
 	sum = sum + error;
-	if(sum > 25000.0f){
-		sum = 25000.0f;
+	if(sum > 25.0f){
+		sum = 25.0f;
 	}
-	if(sum < -25000.0f){
-		sum = -25000.0f;
+	if(sum < -25.0f){
+		sum = -25.0f;
 	}
 	if(error > 45.0f){
 		sum = 0.0f;
@@ -345,11 +398,11 @@ float pid_vx(float target, float real){
 
 	error = target - real;
 
-    if(error > 10.0f){
-    	error_rate = 10.0f;
+    if(error > 6.0f){
+    	error_rate = 6.0f;
     }
-    if(error < -10.0f){
-      error_rate = -10.0f;
+    if(error < -6.0f){
+      error_rate = -6.0f;
     }
 
 	sum = sum + error;
@@ -377,7 +430,7 @@ float pid_vx(float target, float real){
       }
     }
 
-	d_error = target - real;
+	d_error = 0.0 - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
 
@@ -400,11 +453,11 @@ float pid_vy(float target, float real){
 
 	error = target - real;
 
-    if(error > 10.0f){
-    	error_rate = 10.0f;
+    if(error > 6.0f){
+    	error_rate = 6.0f;
     }
-    if(error < -10.0f){
-      error_rate = -10.0f;
+    if(error < -6.0f){
+      error_rate = -6.0f;
     }
 
 	sum = sum + error;
@@ -431,7 +484,7 @@ float pid_vy(float target, float real){
       }
     }
 
-	d_error = target - real;
+	d_error = 0.0 - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
 
@@ -454,11 +507,11 @@ float pid_vz(float target, float real){
 
 	error = target - real;
 
-	if(error > 10.0f){
-    	error_rate = 10.0f;
+	if(error > 6.0f){
+    	error_rate = 6.0f;
     }
-    if(error < -10.0f){
-      error_rate = -10.0f;
+    if(error < -6.0f){
+      error_rate = -6.0f;
     }
 
     sum = sum + error;
@@ -486,20 +539,20 @@ float pid_vz(float target, float real){
       }
     }
 
-	d_error = target - real;
+	d_error = 0.0 - real;
 	error_rate = d_error - pre_error;
 	pre_error = d_error;
 
 	d_out =  pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
 	d_out_1 = d_out;
 
-	result = velocity_pid_mat[1][0]*target + velocity_pid_mat[1][1]*(error + velocity_pid_mat[1][2]*sum*0.01 + velocity_pid_mat[1][3]*d_out / 0.01);
+	result = velocity_pid_mat[2][0]*target + velocity_pid_mat[2][1]*(error + velocity_pid_mat[2][2]*sum*0.01 + velocity_pid_mat[2][3]*d_out / 0.01);
 	return result;
 }
 
-float output_roll;
-float output_pitch;
-float output_yaw;
+//float output_roll;
+//float output_pitch;
+//float output_yaw;
 float imu_roll;
 float imu_pitch;
 float imu_yaw;
@@ -681,7 +734,8 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
 	rate_y_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_y", 10);
 	rate_z_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_z", 10);
 
-  rc_mode_timer = nh->createTimer(ros::Duration(0.2), std::bind(&BasicControl::rc_mode_check_callback, this, std::placeholders::_1));
+  rc_mode_timer = nh->createTimer(ros::Duration(0.05), std::bind(&BasicControl::rc_mode_check_callback, this, std::placeholders::_1));
+  pwm_send_timer = nh->createTimer(ros::Duration(0.0125), std::bind(&BasicControl::pwm_send_callback, this, std::placeholders::_1));
 
   ros::spin();
 }
@@ -694,15 +748,45 @@ float target_vel_z;
 
 float hover_throttle = 0.175;
 
+float mag_vector(float input_vec[]){
+  return sqrt(input_vec[0] * input_vec[0] + input_vec[1] * input_vec[1] + input_vec[2] * input_vec[2]);
+}
+
+void normalize_vec(float input_vec[], float output_vec[]){
+  float magnitude = mag_vector(input_vec);
+  output_vec[0] /= magnitude;
+  output_vec[1] /= magnitude;
+  output_vec[2] /= magnitude;
+}
+
+void cross_product(float input_vec1[], float input_vec2[], float output_vec[]){
+  output_vec[0] = input_vec1[1] * input_vec2[2] - input_vec1[2] * input_vec2[1];
+  output_vec[1] = input_vec1[2] * input_vec2[0] - input_vec1[0] * input_vec2[2];
+  output_vec[2] - input_vec1[0] * input_vec2[1] - input_vec1[1] * input_vec2[0];
+}
+
+float dot_product(float input_vec1[], float input_vec2[]){
+  return input_vec1[0] * input_vec2[0] + input_vec1[1] * input_vec2[1] + input_vec1[2] * input_vec2[2];
+}
+
+Quaternion vector_to_quaternion(float input_vec[], float angle){
+  Quaternion quaternion;
+  float half_angle = angle / 2.0;
+  float sin_half_angle = sin(half_angle);
+  quaternion.w = cos(half_angle);
+  quaternion.x = input_vec[0] * sin_half_angle;
+  quaternion.y = input_vec[1] * sin_half_angle;
+  quaternion.z = input_vec[2] * sin_half_angle;
+  return quaternion;
+}
+
 void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
-
   	float target_vel_body[3];
-
 	if(ctrl_mode == 2 and rc_mode == 1){
 		target_vel_body[1] = rc_channel[0] / -50.0f;
 		target_vel_body[0] = rc_channel[1] / 50.0f;
 		target_w_yaw = rc_channel[3] * -0.002341f;
-		target_vel_body[2] = rc_channel[2] / 100.0f;
+		target_vel_body[2] = rc_channel[2] / 50.0f;
 	}
 
     float body_measure_vel[3];
@@ -727,11 +811,6 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     float world_measure_vel[3];
 	World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
 
-//    world_measure_vel[0] = body_measure_vel[1];
-//    world_measure_vel[1] = -body_measure_vel[0];
-//    world_measure_vel[2] = body_measure_vel[2];
-
-
     float world_target_vel[3];
 	World_to_Body(target_vel_body, world_target_vel, body_to_yaw);
 
@@ -745,16 +824,44 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
 	std_msgs::Float32 rate_msg;
 	rate_msg.data = world_measure_vel[0];
 	rate_x_real_publisher.publish(rate_msg);
-    rate_msg.data = world_measure_vel[1];
-    rate_y_real_publisher.publish(rate_msg);
-    rate_msg.data = world_measure_vel[2];
-    rate_z_real_publisher.publish(rate_msg);
-    rate_msg.data = world_target_vel[0];
-    rate_x_target_publisher.publish(rate_msg);
-    rate_msg.data = world_target_vel[1];
-    rate_y_target_publisher.publish(rate_msg);
-    rate_msg.data = world_target_vel[2];
-    rate_z_target_publisher.publish(rate_msg);
+	rate_msg.data = world_target_vel[0];
+	rate_x_target_publisher.publish(rate_msg);
+	rate_msg.data = world_measure_vel[1];
+	rate_y_real_publisher.publish(rate_msg);
+	rate_msg.data = world_target_vel[1];
+	rate_y_target_publisher.publish(rate_msg);
+	rate_msg.data = world_measure_vel[2];
+	rate_z_real_publisher.publish(rate_msg);
+	rate_msg.data = world_target_vel[2];
+	rate_z_target_publisher.publish(rate_msg);
+
+//	float target_mag_vel = mag_vector(world_target_vel);
+//   	float measure_mag_vel = mag_vector(world_measure_vel);
+//    float error_mag_vel = target_mag_vel - measure_mag_vel;
+//
+//    float mag_output;//TODO:PID for error_mag_vel
+//
+//    float v_target_norm[3];
+//    float v_measure_norm[3];
+//
+//   	normalize_vec(world_target_vel, v_target_norm);
+//    normalize_vec(world_measure_vel, v_measure_norm);
+//
+//    float dot = dot_product(v_target_norm, v_measure_norm);
+//    if(dot > 1.0f){
+//    	dot = 1.0f;
+//    }
+//    float angle_error = acos(dot);
+//
+//	float w_output;//TODO:PID for error_angle
+//
+//    if(angle > 0.0f){
+//		float axis_cross[3];
+//        cross_product(v_measure_norm, v_target_norm, axis_cross);
+//        float norm_axis_cross[3];
+//        normalize_vec(axis_cross, norm_axis_cross);
+//		Quaternion roation_quat = vector_to_quaternion(norm_axis_cross, angle);
+//    }
 
     world_force[2] = world_force[2] + hover_throttle;
     if(world_force[2] < 0.01f){
@@ -820,12 +927,12 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
 
 	if(ctrl_mode == 1 and rc_mode == 1){
-         target_angle_roll = rc_channel[0] * 1.5e-3;
-         target_angle_pitch = rc_channel[1] * -1.5e-3;
-         target_w_yaw = rc_channel[3] * -0.002341f;
-         throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
+     target_angle_roll = rc_channel[0] * 1.5e-3;
+     target_angle_pitch = rc_channel[1] * -1.5e-3;
+     target_w_yaw = rc_channel[3] * -0.002341f;
+     throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
+     Quaternion temp_quaternion;
 
-         Quaternion temp_quaternion;
     target_quaternion.w = 1.0f;
 	target_quaternion.x = 0.0f;
 	target_quaternion.y = 0.0f;
@@ -861,23 +968,23 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     target_velocity_pitch = -pid_angle_pitch(error_body[1]) - w_yaw_body[1];
 	target_velocity_yaw = pid_angle_yaw(error_body[2]) + w_yaw_body[2];
 
-	if(target_velocity_pitch > 3.0f){
-		target_velocity_pitch = 3.0f;
+	if(target_velocity_pitch > 10.0f){
+		target_velocity_pitch = 10.0f;
 	}
-	if(target_velocity_pitch < -3.0f){
-		target_velocity_pitch = -3.0f;
+	if(target_velocity_pitch < -10.0f){
+		target_velocity_pitch = -10.0f;
 	}
-	if(target_velocity_roll > 3.0f){
-		target_velocity_roll = 3.0f;
+	if(target_velocity_roll > 10.0f){
+		target_velocity_roll = 10.0f;
 	}
-	if(target_velocity_roll < -3.0f){
-		target_velocity_roll = -3.0f;
+	if(target_velocity_roll < -10.0f){
+		target_velocity_roll = -10.0f;
 	}
-	if(target_velocity_yaw > 3.0f){
-		target_velocity_yaw = 3.0f;
+	if(target_velocity_yaw > 10.0f){
+		target_velocity_yaw = 10.0f;
 	}
-	if(target_velocity_yaw < -3.0f){
-		target_velocity_yaw = -3.0f;
+	if(target_velocity_yaw < -10.0f){
+		target_velocity_yaw = -10.0f;
 	}
 
 	gyro_data[0] = msg->angular_velocity.x;
@@ -897,10 +1004,12 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	float roll_in = kalman_roll(imu_roll);
 	float pitch_in = kalman_pitch(imu_pitch);
 	float yaw_in = kalman_yaw(imu_yaw);
+
+
 //    std::cout << "roll_in: " << roll_in << std::endl;
-	output_roll = pid_roll(target_velocity_roll, roll_in) / 500.0;
-	output_pitch = pid_pitch(target_velocity_pitch, pitch_in) / 500.0;
-	output_yaw = pid_yaw(target_velocity_yaw, yaw_in) / 500.0;
+	float output_roll = pid_roll(target_velocity_roll, roll_in) / 500.0;
+	float output_pitch = pid_pitch(target_velocity_pitch, pitch_in) / 500.0;
+	float output_yaw = pid_yaw(target_velocity_yaw, yaw_in) / 500.0;
 
 	float front_left_speed 	= 0.0 + output_roll - output_pitch + output_yaw + throttle_set;
     float front_right_speed = 0.0 - output_roll - output_pitch - output_yaw + throttle_set;
@@ -936,11 +1045,16 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	pwm_cmd.rotorPWM1 = rear_left_speed;
 	pwm_cmd.rotorPWM2 = front_left_speed;
 	pwm_cmd.rotorPWM3 = rear_right_speed;
-    if(init_waiting > 0){
-    	ROS_INFO("UKF Waiting...");
-    }else{
-		pwm_publisher.publish(pwm_cmd);
-    }
+}
+
+void BasicControl::pwm_send_callback(const ros::TimerEvent& event){
+	if(init_waiting > 0){
+		ROS_INFO("UKF Waiting...");
+	}else{
+		if(rc_mode != 0){
+			pwm_publisher.publish(pwm_cmd);
+		}
+	}
 }
 
 void BasicControl::channel1_callback(const std_msgs::Float32::ConstPtr& msg){

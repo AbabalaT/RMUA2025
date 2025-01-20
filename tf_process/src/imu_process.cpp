@@ -171,7 +171,7 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     nav_msgs::Odometry odom_msg;
-    odom_msg.header.stamp = ros::Time::now();
+    odom_msg.header.stamp = msg->header.stamp;
     odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
 
@@ -197,8 +197,8 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.z = world_quat.z;
     odom_msg.pose.pose.orientation.w = world_quat.w;
 
-    double conv_1 = 0.01f;
-    double conv_2 = 0.0f;
+    double conv_1 = 0.1f;
+    double conv_2 = 0.01f;
 
     for(int i = 0; i < 35; i++) {
         odom_msg.pose.covariance[0] = 0.0;
@@ -223,10 +223,13 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     uwb_map_pub.publish(odom_msg);
 }
 
+double zero[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+int imu_cnt = 0;
+
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
   	imu_stamp = ros::Time::now();
 	sensor_msgs::Imu new_msg = *msg;
-	new_msg.header.stamp = ros::Time::now();
+//	new_msg.header.stamp = ros::Time::now();
 	new_msg.header.frame_id = "base_link";
 
     Quaternion q_measure;
@@ -275,7 +278,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
 
     tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z, new_msg.orientation.w);
     tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
-    tf2::Vector3 acc_body(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+    tf2::Vector3 acc_body(new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
 
     tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
     acc_world.setZ(acc_world.z() + 9.80);
@@ -284,11 +287,38 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.linear_acceleration.x = acc_body.x();
     new_msg.linear_acceleration.y = -acc_body.y();
     new_msg.linear_acceleration.z = -acc_body.z();
+
+
 //
 //    double temp = new_msg.angular_velocity.x;
     new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
     new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
 
+	if(imu_cnt < 300){
+          imu_cnt = imu_cnt+1;
+          zero[0] += new_msg.linear_acceleration.x;
+          zero[1] += new_msg.linear_acceleration.y;
+          zero[2] += new_msg.linear_acceleration.z;
+          zero[3] += new_msg.angular_velocity.x;
+          zero[4] += new_msg.angular_velocity.y;
+          zero[5] += new_msg.angular_velocity.z;
+          if(imu_cnt == 300){
+			zero[0] = zero[0] / -300.0;
+            zero[1] = zero[1] / -300.0;
+            zero[2] = zero[2] / -300.0;
+            zero[3] = zero[3] / -300.0;
+            zero[4] = zero[4] / -300.0;
+            zero[5] = zero[5] / -300.0;
+            std::cout<<zero[0]<<" "<<zero[1]<<" "<<zero[2]<<" "<<zero[3]<<std::endl;
+          }
+	}else{
+		new_msg.linear_acceleration.x += zero[0];
+    	new_msg.linear_acceleration.y += zero[1];
+    	new_msg.linear_acceleration.z += zero[2];
+		new_msg.angular_velocity.x += zero[3];
+    	new_msg.angular_velocity.y += zero[4];
+    	new_msg.angular_velocity.z += zero[5];
+	}
 
     imu_now_pub.publish(new_msg);
     Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
