@@ -24,6 +24,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
 
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+
 #include "MahonyAHRS.hpp"
 
 tf2::Quaternion ned2enu_quat;
@@ -32,6 +36,8 @@ float real_world_v_x, real_world_v_y, real_world_v_z;
 float real_world_acc_x, real_world_acc_y, real_world_acc_z;
 float real_world_pre_v_x, real_world_pre_v_y, real_world_pre_v_z;
 float real_world_pre_x, real_world_pre_y, real_world_pre_z;
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr route_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
 int initialized = 0;
 
@@ -44,6 +50,7 @@ ros::Publisher imu_now_pub;
 ros::Publisher odom_pub;
 ros::Publisher lio_pub;
 ros::Publisher real_pose_pub;
+ros::Publisher real_map_pub;
 ros::Publisher pcl_pub;
 ros::Publisher ahrs_pub;
 ros::Publisher uwb_map_pub;
@@ -139,10 +146,23 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     nav_msgs::Odometry odom_msg;
 
 
-    odom_msg.header.stamp = ros::Time::now();
+    odom_msg.header.stamp = msg->header.stamp;
     odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
 
+    double conv_1 = 0.1f;
+    double conv_2 = 0.01f;
+
+    for(int i = 0; i < 35; i++) {
+        odom_msg.pose.covariance[0] = 0.0;
+    }
+
+    odom_msg.pose.covariance[0] = conv_1;
+    odom_msg.pose.covariance[7] = conv_1;
+    odom_msg.pose.covariance[14] = conv_1;
+    odom_msg.pose.covariance[21] = conv_2;
+    odom_msg.pose.covariance[28] = conv_2;
+    odom_msg.pose.covariance[35] = conv_2;
 
     odom_msg.pose.pose.position.x = msg->pose.position.y;
     odom_msg.pose.pose.position.y = msg->pose.position.x;
@@ -167,6 +187,15 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.z = q_measured.z;
     odom_msg.pose.pose.orientation.w = q_measured.w;
     real_pose_pub.publish(odom_msg);
+    odom_pub.publish(odom_msg);
+    odom_msg.header.frame_id = "map_odom";
+    real_map_pub.publish(odom_msg);
+
+    pcl::PointXYZ new_point;
+    new_point.x = odom_msg.pose.pose.position.x;
+    new_point.y = odom_msg.pose.pose.position.y;
+    new_point.z = odom_msg.pose.pose.position.z;
+    route_cloud->points.push_back(new_point);
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
@@ -197,11 +226,11 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.z = world_quat.z;
     odom_msg.pose.pose.orientation.w = world_quat.w;
 
-    double conv_1 = 0.1f;
+    double conv_1 = 0.2f;
     double conv_2 = 0.01f;
 
     for(int i = 0; i < 35; i++) {
-        odom_msg.pose.covariance[0] = 0.0;
+        odom_msg.pose.covariance[0] = 1e-5;
     }
 
     odom_msg.pose.covariance[0] = conv_1;
@@ -244,7 +273,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.orientation.w = q_measure.w;
 
     double conv_1 = 0.1;
-    double conv_2 = 0.5;
+    double conv_2 = 0.25;
     double conv_3 = 1e-5;
     double conv_4 = 1e-5;
     new_msg.angular_velocity_covariance[0] = conv_1;
@@ -281,7 +310,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     tf2::Vector3 acc_body(new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
 
     tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
-    acc_world.setZ(acc_world.z() + 9.80);
+    acc_world.setZ(acc_world.z() + 9.806);
     acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
 
     new_msg.linear_acceleration.x = acc_body.x();
@@ -366,6 +395,7 @@ int main(int argc, char **argv) {
     pcl_pub = pnh.advertise<sensor_msgs::PointCloud2>("/ekf/pcl", 10);
     odom_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb", 10);
     real_pose_pub = pnh.advertise<nav_msgs::Odometry>("/debug/real_pose_odom", 10);
+    real_map_pub = pnh.advertise<nav_msgs::Odometry>("/debug/real_map_odom", 10);
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
     ahrs_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/ahrs", 10);
 	uwb_map_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb2", 10);
@@ -374,6 +404,10 @@ int main(int argc, char **argv) {
     mahony_quaternion[1] = 0.0;
     mahony_quaternion[2] = 0.0;
     mahony_quaternion[3] = 0.0;
+    pcl::io::loadPCDFile<pcl::PointXYZ>("/home/tc/route.pcd", *route_cloud);
     ros::spin();
+    route_cloud->width = route_cloud->points.size();
+    route_cloud->height = 1;
+    pcl::io::savePCDFileASCII("/home/tc/route.pcd", *route_cloud);
     return 0;
 }

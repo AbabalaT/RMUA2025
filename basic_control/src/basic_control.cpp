@@ -81,6 +81,52 @@ float kalman_yaw(float measure){
 	return measure;
 }
 
+typedef struct {
+    double a0, a1, a2, b1, b2;
+    double x1, x2, y1, y2;
+} NotchFilter;
+
+// Initialize notch filter at 10 Hz, sampling frequency 100 Hz, Q = 30
+void initNotchFilter(NotchFilter *filter, double fs, double f0, double Q) {
+    double omega0 = 2.0 * M_PI * f0 / fs;
+    double alpha = sin(omega0) / (2.0 * Q);
+
+    // Calculate filter coefficients
+    filter->a0 =  1.0 + alpha;
+    filter->a1 = -2.0 * cos(omega0);
+    filter->a2 =  1.0 - alpha;
+    filter->b1 = -2.0 * cos(omega0);
+    filter->b2 =  1.0 - alpha;
+
+    // Normalize the coefficients
+    filter->a0 = 1.0 / filter->a0;
+    filter->a1 *= filter->a0;
+    filter->a2 *= filter->a0;
+    filter->b1 *= filter->a0;
+    filter->b2 *= filter->a0;
+
+    // Initialize state variables
+    filter->x1 = filter->x2 = 0.0;
+    filter->y1 = filter->y2 = 0.0;
+}
+
+// Process input signal through the notch filter
+double processNotchFilter(NotchFilter *filter, double input) {
+    // Apply the filter to the input signal
+    double output = filter->a0 * input + filter->a1 * filter->x1 + filter->a2 * filter->x2
+                  - filter->b1 * filter->y1 - filter->b2 * filter->y2;
+
+    // Update states for the next iteration
+    filter->x2 = filter->x1;
+    filter->x1 = input;
+    filter->y2 = filter->y1;
+    filter->y1 = output;
+
+    return output;
+}
+
+NotchFilter notch_vel_x, notch_vel_y, notch_vel_z;
+
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
 	mat_pid[0][1] = 8.4;
@@ -97,26 +143,26 @@ void pid_init(void){
 	mat_pid[2][2] = 0.0f;
 	mat_pid[2][3] = 0.0;
 	
-	angle_pid_mat[0][0] = 3.5;
+	angle_pid_mat[0][0] = 3.2;
 	angle_pid_mat[0][1] = 0.0f;
-	angle_pid_mat[0][2] = 0.07f;
+	angle_pid_mat[0][2] = 0.0f;
 
-	angle_pid_mat[1][0] = 3.5;
+	angle_pid_mat[1][0] = 3.2;
 	angle_pid_mat[1][1] = 0.0f;
-	angle_pid_mat[1][2] = 0.07f;
+	angle_pid_mat[1][2] = 0.0f;
 	
-	angle_pid_mat[2][0] = 3.5;
+	angle_pid_mat[2][0] = 3.2;
 	angle_pid_mat[2][1] = 0.0f;
-	angle_pid_mat[2][2] = 0.07f;
+	angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.0124f;
-	velocity_pid_mat[1][2] = 0.12;
+	velocity_pid_mat[1][1] = 0.016f;
+	velocity_pid_mat[1][2] = 0.2;
 	velocity_pid_mat[1][3] = 0.032;
 
     velocity_pid_mat[2][0] = 0.0;
-	velocity_pid_mat[2][1] = 0.014f;
-	velocity_pid_mat[2][2] = 0.14f;
+	velocity_pid_mat[2][1] = 0.0162f;
+	velocity_pid_mat[2][2] = 0.2f;
 	velocity_pid_mat[2][3] = 0.008f;
 }
 
@@ -407,11 +453,11 @@ float pid_vx(float target, float real){
 
 	sum = sum + error;
 
-	if(sum > 400.0f){
-		sum = 400.0;
+	if(sum > 1000.0f){
+		sum = 1000.0;
 	}
-	if(sum < -400.0f){
-		sum = -400.0;
+	if(sum < -1000.0f){
+		sum = -1000.0;
 	}
 
 	if(error > 50.0f){
@@ -462,11 +508,11 @@ float pid_vy(float target, float real){
 
 	sum = sum + error;
 
-	if(sum > 400.0f){
-		sum = 400.0;
+	if(sum > 1000.0f){
+		sum = 1000.0;
 	}
-	if(sum < -400.0f){
-		sum = -400.0;
+	if(sum < -1000.0f){
+		sum = -1000.0;
 	}
 
 	if(error > 50.0f){
@@ -516,11 +562,11 @@ float pid_vz(float target, float real){
 
     sum = sum + error;
 
-	if(sum > 400.0f){
-		sum = 400.0;
+	if(sum > 1000.0f){
+		sum = 1000.0;
 	}
-	if(sum < -400.0f){
-		sum = -400.0;
+	if(sum < -1000.0f){
+		sum = -1000.0;
 	}
 
 	if(error > 50.0f){
@@ -715,6 +761,9 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
 	pwm_cmd.rotorPWM1 = 0.1;
 	pwm_cmd.rotorPWM2 = 0.1;
 	pwm_cmd.rotorPWM3 = 0.1;
+    initNotchFilter(&notch_vel_x, 100.0, 10.0, 100.0);
+    initNotchFilter(&notch_vel_y, 100.0, 10.0, 100.0);
+    initNotchFilter(&notch_vel_z, 100.0, 10.0, 100.0);
 
   rc_channel1_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc1", 1, std::bind(&BasicControl::channel1_callback, this, std::placeholders::_1));
   rc_channel2_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc2", 1, std::bind(&BasicControl::channel2_callback, this, std::placeholders::_1));
@@ -783,16 +832,18 @@ Quaternion vector_to_quaternion(float input_vec[], float angle){
 void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
   	float target_vel_body[3];
 	if(ctrl_mode == 2 and rc_mode == 1){
-		target_vel_body[1] = rc_channel[0] / -50.0f;
-		target_vel_body[0] = rc_channel[1] / 50.0f;
+		target_vel_body[1] = rc_channel[0] / -80.0f;
+		target_vel_body[0] = rc_channel[1] / 80.0f;
 		target_w_yaw = rc_channel[3] * -0.002341f;
-		target_vel_body[2] = rc_channel[2] / 50.0f;
+		target_vel_body[2] = rc_channel[2] / 80.0f;
 	}
 
     float body_measure_vel[3];
     body_measure_vel[0] = msg->twist.twist.linear.x;
     body_measure_vel[1] = msg->twist.twist.linear.y;
     body_measure_vel[2] = msg->twist.twist.linear.z;
+
+
 
 	Quaternion odom_pose;
 	odom_pose.w = msg->pose.pose.orientation.w;
@@ -810,6 +861,10 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     Quaternion body_to_world = quaternion_conjugate(odom_pose);
     float world_measure_vel[3];
 	World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
+
+//	world_measure_vel[0] = processNotchFilter(&notch_vel_x, world_measure_vel[0]);
+//    world_measure_vel[1] = processNotchFilter(&notch_vel_y, world_measure_vel[1]);
+//    world_measure_vel[2] = processNotchFilter(&notch_vel_z, world_measure_vel[2]);
 
     float world_target_vel[3];
 	World_to_Body(target_vel_body, world_target_vel, body_to_yaw);
@@ -903,7 +958,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     World_to_Body(up_vector, norm_tilt_vector, de_yaw_ahrs);
     float cos_error = norm_tilt_vector[0] * norm_body_force[0] + norm_tilt_vector[1] * norm_body_force[1] + norm_tilt_vector[2] * norm_body_force[2];
 
-    throttle_set = throttle_set * pow(cos_error, 0.25);// * throttle_set);
+    //throttle_set = throttle_set * pow(cos_error, 0.25);// * throttle_set);
 
     if(throttle_set > 1.0){
       throttle_set = 1.0;

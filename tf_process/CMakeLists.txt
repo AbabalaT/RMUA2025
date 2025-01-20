@@ -12,6 +12,8 @@ find_package(
         cv_bridge
 )
 find_package(OpenCV REQUIRED)
+
+find_package(PCL REQUIRED)
 catkin_package(
           INCLUDE_DIRS include
         #  LIBRARIES tf_process
@@ -23,6 +25,7 @@ catkin_package(
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
+        ${PCL_INCLUDE_DIRS}
 )
 
 add_executable(${PROJECT_NAME}_node src/transform_process.cpp)
@@ -36,4 +39,5 @@ target_link_libraries(
 target_link_libraries(
         imu_process_node
         ${catkin_LIBRARIES}
+        ${PCL_LIBRARIES}
 )

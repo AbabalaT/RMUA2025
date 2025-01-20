@@ -11,6 +11,7 @@
       <param name="world_frame" value="map"/>
 
       <param name="odom0" value="/ekf/uwb"/>
+<!--       <param name="odom0" value="/debug/real_pose_odom"/> -->
       <param name="odom1" value="/Odometry"/>
       <param name="imu0" value="/ekf/imu_now"/>
 
