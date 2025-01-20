@@ -243,10 +243,10 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.orientation.z = q_measure.z;
     new_msg.orientation.w = q_measure.w;
 
-    double conv_1 = 0.05;
-    double conv_2 = 0.25;
-    double conv_3 = 0.0;
-    double conv_4 = 0.0;
+    double conv_1 = 0.1;
+    double conv_2 = 0.5;
+    double conv_3 = 1e-5;
+    double conv_4 = 1e-5;
     new_msg.angular_velocity_covariance[0] = conv_1;
 
     new_msg.angular_velocity_covariance[1] = conv_3;

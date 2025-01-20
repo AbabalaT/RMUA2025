@@ -16,7 +16,7 @@ float mat_pid[4][4];	//R-P-Y-throttle
 float angle_pid_mat[3][3];
 double velocity_pid_mat[4][4];
 
-int init_waiting = 600;
+int init_waiting = 60;
 
 float throttle_set = 0.0f;
 
