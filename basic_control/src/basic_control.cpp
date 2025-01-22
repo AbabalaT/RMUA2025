@@ -166,7 +166,7 @@ void pid_init(void){
 	velocity_pid_mat[2][3] = 0.008f;
 }
 
-float pid_roll(float target, float real){
+float pid_roll(float target, float real, float dt){
 	static float error;
 	static float sum;
 	static float pre_error;
@@ -177,12 +177,12 @@ float pid_roll(float target, float real){
 	static float d_error;
 
 	error = target - real;
-	sum = sum + error;
+	sum = sum + error * dt;
 
-	if(sum > 8.5f){
+	if(sum > 0.085f){
 		sum = 0.0;
 	}
-	if(sum < -8.5f){
+	if(sum < -0.085f){
 		sum = -0.0;
 	}
 
@@ -230,11 +230,11 @@ float pid_roll(float target, float real){
 
 //    std::cout<<"real: "<<real<<" "<<"target: "<<target<<" "<<"sum = "<<sum<<" "<<"d_out_1 = "<<d_out<<std::endl;
 //    std::cout<<"throttle"<<throttle_set<<std::endl;
-	result = mat_pid[0][0]*target + mat_pid[0][1]*error + mat_pid[0][2]*sum*0.01 + mat_pid[0][3]*d_out * 100.0f;
+	result = mat_pid[0][0]*target + mat_pid[0][1]*error + mat_pid[0][2]*sum + mat_pid[0][3]*d_out/dt;
 	return result;
 }
 
-float pid_pitch(float target, float real){
+float pid_pitch(float target, float real, float dt){
 	static float error;
 	static float sum;
 	static float pre_error;
@@ -245,12 +245,12 @@ float pid_pitch(float target, float real){
 	static float d_error;
 
 	error = target - real;
-	sum = sum + error;
+	sum = sum + error * dt;
 
-	if(sum > 8.5f){
+	if(sum > 0.085f){
 		sum = 0.0;
 	}
-	if(sum < -8.5f){
+	if(sum < -0.085f){
 		sum = -0.0;
 	}
 
@@ -286,11 +286,11 @@ float pid_pitch(float target, float real){
 	d_out =  pid_N * error_rate + (1.0f - pid_N) * d_out_1;
 	d_out_1 = d_out;
 
-	result = mat_pid[1][0]*target + mat_pid[1][1]*error + mat_pid[1][2]*sum*0.01 + mat_pid[1][3]*d_out / 0.01;
+	result = mat_pid[1][0]*target + mat_pid[1][1]*error + mat_pid[1][2]*sum + mat_pid[1][3]*d_out / dt;
 	return result;
 }
 
-float pid_yaw(float target, float real){
+float pid_yaw(float target, float real, float dt){
 	static float error;
 	static float sum;
 	static float pre_error;
@@ -302,12 +302,12 @@ float pid_yaw(float target, float real){
 
 	error = target - real;
 
-	sum = sum + error;
+	sum = sum + error * dt;
 
-	if(sum > 8.5f){
+	if(sum > 0.085f){
 		sum = 0.0;
 	}
-	if(sum < -8.5f){
+	if(sum < -0.085f){
 		sum = -0.0;
 	}
 
@@ -337,11 +337,11 @@ float pid_yaw(float target, float real){
 	d_out =  pid_N * error_rate + (1.0f - pid_N) * d_out_1;
 	d_out_1 = d_out;
 
-	result = mat_pid[2][0]*target + mat_pid[2][1]*error + mat_pid[2][2]*sum*0.01 + mat_pid[2][3]*d_out / 0.01;
+	result = mat_pid[2][0]*target + mat_pid[2][1]*error + mat_pid[2][2]*sum + mat_pid[2][3]*d_out / dt;
 	return result;
 }
 
-float pid_angle_roll(float error){
+float pid_angle_roll(float error, float dt){
 	static float sum;
 	static float pre_error;
 	static float result;
@@ -368,11 +368,11 @@ float pid_angle_roll(float error){
 	error_rate = error - pre_error;
 
 	pre_error = error;
-	result = angle_pid_mat[0][0]*error + angle_pid_mat[0][1] * 0.01 * sum + angle_pid_mat[0][2] / 0.01 * error_rate;
+	result = angle_pid_mat[0][0]*error + angle_pid_mat[0][1] * dt * sum + angle_pid_mat[0][2] / dt * error_rate;
 	return result;
 }
 
-float pid_angle_pitch(float error){
+float pid_angle_pitch(float error, float dt){
 	static float sum;
 	static float pre_error;
 	static float result;
@@ -398,11 +398,11 @@ float pid_angle_pitch(float error){
 	}
 	error_rate = error - pre_error;
 	pre_error = error;
-	result = angle_pid_mat[1][0]*error + angle_pid_mat[1][1] * 0.01 * sum + angle_pid_mat[1][2] / 0.01 * error_rate;
+	result = angle_pid_mat[1][0]*error + angle_pid_mat[1][1] * dt * sum + angle_pid_mat[1][2] / dt * error_rate;
 	return result;
 }
 
-float pid_angle_yaw(float error){
+float pid_angle_yaw(float error, float dt){
 	static float sum;
 	static float pre_error;
 	static float result;
@@ -428,7 +428,7 @@ float pid_angle_yaw(float error){
 	}
 	error_rate = error - pre_error;
 	pre_error = error;
-	result = angle_pid_mat[2][0]*error + angle_pid_mat[2][1] * 0.01 * sum + angle_pid_mat[2][2] / 0.01 *error_rate;
+	result = angle_pid_mat[2][0]*error + angle_pid_mat[2][1] * dt * sum + angle_pid_mat[2][2] / dt * error_rate;
 	return result;
 }
 
@@ -967,6 +967,10 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
 
 void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
+  	static double pre_time;
+    double imu_time = ros::Time::now().toSec();
+    double dt = imu_time - pre_time;
+    pre_time = imu_time;
     measure_quaternion.w = msg->orientation.w;
     measure_quaternion.x = msg->orientation.x;
     measure_quaternion.y = msg->orientation.y;
@@ -985,7 +989,12 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
      target_angle_roll = rc_channel[0] * 1.5e-3;
      target_angle_pitch = rc_channel[1] * -1.5e-3;
      target_w_yaw = rc_channel[3] * -0.002341f;
-     throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
+     if(rc_channel[4] > 100){
+       throttle_set = (rc_channel[2] / 2.0 + 500.0)/1000.0;
+     }else{
+       throttle_set = (rc_channel[2] / 2.0 + 500.0)/2000.0;
+     }
+
      Quaternion temp_quaternion;
 
     target_quaternion.w = 1.0f;
@@ -1019,9 +1028,9 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     World_to_Body(w_yaw_world, w_yaw_body, measure_quaternion);
 
 
-    target_velocity_roll = pid_angle_roll(error_body[0]) + w_yaw_body[0];
-    target_velocity_pitch = -pid_angle_pitch(error_body[1]) - w_yaw_body[1];
-	target_velocity_yaw = pid_angle_yaw(error_body[2]) + w_yaw_body[2];
+    target_velocity_roll = pid_angle_roll(error_body[0], dt) + w_yaw_body[0];
+    target_velocity_pitch = -pid_angle_pitch(error_body[1], dt) - w_yaw_body[1];
+	target_velocity_yaw = pid_angle_yaw(error_body[2], dt) + w_yaw_body[2];
 
 	if(target_velocity_pitch > 10.0f){
 		target_velocity_pitch = 10.0f;
@@ -1062,9 +1071,9 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
 
 //    std::cout << "roll_in: " << roll_in << std::endl;
-	float output_roll = pid_roll(target_velocity_roll, roll_in) / 500.0;
-	float output_pitch = pid_pitch(target_velocity_pitch, pitch_in) / 500.0;
-	float output_yaw = pid_yaw(target_velocity_yaw, yaw_in) / 500.0;
+	float output_roll = pid_roll(target_velocity_roll, roll_in, dt) / 500.0;
+	float output_pitch = pid_pitch(target_velocity_pitch, pitch_in, dt) / 500.0;
+	float output_yaw = pid_yaw(target_velocity_yaw, yaw_in, dt) / 500.0;
 
 	float front_left_speed 	= 0.0 + output_roll - output_pitch + output_yaw + throttle_set;
     float front_right_speed = 0.0 - output_roll - output_pitch - output_yaw + throttle_set;

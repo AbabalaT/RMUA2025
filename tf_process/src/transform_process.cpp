@@ -25,7 +25,7 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
     geometry_msgs::TransformStamped trans;
     q.setRPY(0, 3.1416, 3.1416);
 
-    trans.header.frame_id = "base_link";
+    trans.header.frame_id = "plane_base_link";
     trans.child_frame_id = "body";
     trans.header.stamp = ros::Time::now();
     trans.transform.rotation.x = q.x();

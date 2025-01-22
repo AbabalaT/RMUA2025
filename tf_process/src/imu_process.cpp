@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include <ros/ros.h>
 
 #include <nav_msgs/Odometry.h>
@@ -20,6 +21,8 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
+
+#include <std_msgs/Float32.h>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
@@ -54,6 +57,8 @@ ros::Publisher real_map_pub;
 ros::Publisher pcl_pub;
 ros::Publisher ahrs_pub;
 ros::Publisher uwb_map_pub;
+
+std::ofstream outFile;
 
 float init_pose_x, init_pose_y, init_pose_z;
 
@@ -142,6 +147,13 @@ void InitialPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     init_quat = quat;
 }
 
+float rc_channel[6];
+float pre_rc_channel[6];
+
+void channel6_callback(const std_msgs::Float32::ConstPtr& msg){
+  rc_channel[5] = msg->data;
+}
+
 void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     nav_msgs::Odometry odom_msg;
 
@@ -196,6 +208,9 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     new_point.y = odom_msg.pose.pose.position.y;
     new_point.z = odom_msg.pose.pose.position.z;
     route_cloud->points.push_back(new_point);
+    if(rc_channel[5] < 100){
+      outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
+    }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
@@ -256,6 +271,7 @@ double zero[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 int imu_cnt = 0;
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
+
   	imu_stamp = ros::Time::now();
 	sensor_msgs::Imu new_msg = *msg;
 //	new_msg.header.stamp = ros::Time::now();
@@ -357,7 +373,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
 void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
     sensor_msgs::PointCloud2 new_msg = *msg;
     new_msg.header.stamp = ros::Time::now();
-    new_msg.header.frame_id = "base_link";
+//    new_msg.header.frame_id = "body";
     pcl_pub.publish(new_msg);
 }
 
@@ -376,6 +392,32 @@ void project2plane_callback(const ros::TimerEvent&){
     trans.transform.translation.y = init_pose_y;
     trans.transform.translation.z = init_pose_z;
     br.sendTransform(trans);
+
+    geometry_msgs::TransformStamped base2plane;
+    try {
+        base2plane = tfBuffer.lookupTransform("map", "base_link", ros::Time(0));
+    }
+    catch (tf2::TransformException &ex) {
+        ROS_WARN("BaseLink Get TF ERROR!");
+        return;
+    }
+    base2plane.transform.translation.z = 0;
+    base2plane.header.stamp = ros::Time::now();
+    base2plane.child_frame_id = "plane_base_link";
+    br.sendTransform(base2plane);
+    tf2::Quaternion b2m{base2plane.transform.rotation.x, base2plane.transform.rotation.y,
+                        base2plane.transform.rotation.z, base2plane.transform.rotation.w};
+    double roll = 0, pitch = 0, yaw = 0;
+    tf2::Matrix3x3(b2m).getRPY(roll, pitch, yaw);
+    tf2::Quaternion q;
+    q.setRPY(0, 0, yaw);
+    base2plane.transform.rotation.x = q.x();
+    base2plane.transform.rotation.y = q.y();
+    base2plane.transform.rotation.z = q.z();
+    base2plane.transform.rotation.w = q.w();
+    base2plane.header.stamp = ros::Time::now();
+	base2plane.child_frame_id = "nav_base_link";
+    br.sendTransform(base2plane);
 }
 
 int main(int argc, char **argv) {
@@ -383,13 +425,15 @@ int main(int argc, char **argv) {
     ros::NodeHandle pnh("~");
     tf2_ros::TransformListener tfListener(tfBuffer);
 
-    ros::Timer timer1 = pnh.createTimer(ros::Duration(0.02), project2plane_callback);
+    ros::Timer timer1 = pnh.createTimer(ros::Duration(0.01), project2plane_callback);
 
     ros::Subscriber imu_sub = pnh.subscribe("/airsim_node/drone_1/imu/imu", 10, imuCallback);
     ros::Subscriber pose_sub = pnh.subscribe("/airsim_node/drone_1/gps", 10, poseCallback);
     ros::Subscriber debug_pose = pnh.subscribe("/airsim_node/drone_1/debug/pose_gt", 10, RealPoseCallback);
     //ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
     ros::Subscriber init_sub = pnh.subscribe("/airsim_node/initial_pose", 10, InitialPoseCallback);
+
+    ros::Subscriber rc6_sub =pnh.subscribe("/custom_debug/rc6", 10, channel6_callback);
 
     imu_now_pub = pnh.advertise<sensor_msgs::Imu>("/ekf/imu_now", 10);
     pcl_pub = pnh.advertise<sensor_msgs::PointCloud2>("/ekf/pcl", 10);
@@ -405,9 +449,11 @@ int main(int argc, char **argv) {
     mahony_quaternion[2] = 0.0;
     mahony_quaternion[3] = 0.0;
     pcl::io::loadPCDFile<pcl::PointXYZ>("/home/tc/route.pcd", *route_cloud);
+    outFile.open("/home/tc/route_point.route", std::ios::app);
     ros::spin();
     route_cloud->width = route_cloud->points.size();
     route_cloud->height = 1;
     pcl::io::savePCDFileASCII("/home/tc/route.pcd", *route_cloud);
+    outFile.close();
     return 0;
 }
