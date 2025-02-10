@@ -1,7 +1,0 @@
-<launch>
-<!--   <rosparam file="$(find move_controller)/params/teb_params_2.yaml" /> -->
-  <node name="costmap_node" pkg="costmap_2d" type="costmap_2d_node" output="screen">
-      <rosparam file="$(find move_controller)/params/local_costmap_2.yaml" command="load" ns="costmap" />
-  </node>
-<!--   <node name="teb_local_planner" pkg="teb_local_planner" type="teb_local_planner" output="screen"/> -->
-</launch>

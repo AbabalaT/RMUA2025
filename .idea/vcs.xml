@@ -3,11 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/FAST_LIO" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/FAST_LIO/include/ikd-Tree" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/SDL" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/costmap_converter" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/navigation" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/robot_localization" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/teb_local_planner" vcs="Git" />
   </component>
 </project>
