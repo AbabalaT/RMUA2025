@@ -15,6 +15,9 @@ typedef struct {
 float mat_pid[4][4];	//R-P-Y-throttle
 float angle_pid_mat[3][3];
 double velocity_pid_mat[4][4];
+double pos_pid_mat[4][4];
+
+float target_world_pos[3];
 
 int init_waiting = 60;
 
@@ -50,9 +53,6 @@ double kalman_roll(float measure){
 	k = p / (p + kalman_r);
 	x = x + k * (measure - x);
 	p = (1.0 - k) * p;
-
-
-//    return x;
 	return measure;
 
 }
@@ -65,7 +65,6 @@ float kalman_pitch(float measure){
 	k = p / (p + kalman_r);
 	x = x + k * (measure - x);
 	p = (1.0f - k) * p;
-//	return x;
     return measure;
 }
 
@@ -77,46 +76,57 @@ float kalman_yaw(float measure){
 	k = p / (p + kalman_r);
 	x = x + k * (measure - x);
 	p = (1.0f - k) * p;
-//	return x;
 	return measure;
 }
 
+//Butterworth filter
+#define PI 3.14159265358979323846
+
+// 定义滤波器结构体
 typedef struct {
-    double a0, a1, a2, b1, b2;
-    double x1, x2, y1, y2;
-} NotchFilter;
+    // 滤波器系数
+    double b0, b1, b2;
+    double a1, a2;
 
-// Initialize notch filter at 10 Hz, sampling frequency 100 Hz, Q = 30
-void initNotchFilter(NotchFilter *filter, double fs, double f0, double Q) {
-    double omega0 = 2.0 * M_PI * f0 / fs;
-    double alpha = sin(omega0) / (2.0 * Q);
+    // 滤波器状态
+    double x1, x2;  // 输入状态
+    double y1, y2;  // 输出状态
+} ButterworthFilter;
 
-    // Calculate filter coefficients
-    filter->a0 =  1.0 + alpha;
-    filter->a1 = -2.0 * cos(omega0);
-    filter->a2 =  1.0 - alpha;
-    filter->b1 = -2.0 * cos(omega0);
-    filter->b2 =  1.0 - alpha;
+// 初始化巴特沃斯低通滤波器
+void initButterworthFilter(ButterworthFilter* filter, double sampleRate, double cutoffFreq) {
+    double omega_c = 2.0 * PI * cutoffFreq / sampleRate;
+    double alpha = sin(omega_c) / 2.0;
 
-    // Normalize the coefficients
-    filter->a0 = 1.0 / filter->a0;
-    filter->a1 *= filter->a0;
-    filter->a2 *= filter->a0;
-    filter->b1 *= filter->a0;
-    filter->b2 *= filter->a0;
+    // 计算滤波器系数
+    double b0 = (1 - cos(omega_c)) / 2;
+    double b1 = 1 - cos(omega_c);
+    double b2 = (1 - cos(omega_c)) / 2;
+    double a0 = 1 + alpha;
+    double a1 = -2 * cos(omega_c);
+    double a2 = 1 - alpha;
 
-    // Initialize state variables
-    filter->x1 = filter->x2 = 0.0;
-    filter->y1 = filter->y2 = 0.0;
+    // 归一化系数
+    filter->b0 = b0 / a0;
+    filter->b1 = b1 / a0;
+    filter->b2 = b2 / a0;
+    filter->a1 = a1 / a0;
+    filter->a2 = a2 / a0;
+
+    // 初始化状态
+    filter->x1 = 0;
+    filter->x2 = 0;
+    filter->y1 = 0;
+    filter->y2 = 0;
 }
 
-// Process input signal through the notch filter
-double processNotchFilter(NotchFilter *filter, double input) {
-    // Apply the filter to the input signal
-    double output = filter->a0 * input + filter->a1 * filter->x1 + filter->a2 * filter->x2
-                  - filter->b1 * filter->y1 - filter->b2 * filter->y2;
+// 应用滤波器
+double applyButterworthFilter(ButterworthFilter* filter, double input) {
+    // 计算输出
+    double output = filter->b0 * input + filter->b1 * filter->x1 + filter->b2 * filter->x2
+                    - filter->a1 * filter->y1 - filter->a2 * filter->y2;
 
-    // Update states for the next iteration
+    // 更新状态
     filter->x2 = filter->x1;
     filter->x1 = input;
     filter->y2 = filter->y1;
@@ -125,45 +135,45 @@ double processNotchFilter(NotchFilter *filter, double input) {
     return output;
 }
 
-NotchFilter notch_vel_x, notch_vel_y, notch_vel_z;
+ButterworthFilter world_vel_x_filter, world_vel_y_filter, world_vel_z_filter;
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 8.4;
-    mat_pid[0][2] = 96.0;
-	mat_pid[0][3] = 0.07;
+	mat_pid[0][1] = 7.2;
+    mat_pid[0][2] = 52.0;
+	mat_pid[0][3] = 0.06;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 8.8f;
-	mat_pid[1][2] = 96.0;
-	mat_pid[1][3] = 0.07;
+	mat_pid[1][1] = 7.2f;
+	mat_pid[1][2] = 52.0;
+	mat_pid[1][3] = 0.06;
 	
 	mat_pid[2][0] = 0.0;
 	mat_pid[2][1] = 120.0f;
 	mat_pid[2][2] = 0.0f;
 	mat_pid[2][3] = 0.0;
 	
-	angle_pid_mat[0][0] = 3.2;
+	angle_pid_mat[0][0] = 4.2;
 	angle_pid_mat[0][1] = 0.0f;
 	angle_pid_mat[0][2] = 0.0f;
 
-	angle_pid_mat[1][0] = 3.2;
+	angle_pid_mat[1][0] = 4.2;
 	angle_pid_mat[1][1] = 0.0f;
 	angle_pid_mat[1][2] = 0.0f;
 	
-	angle_pid_mat[2][0] = 3.2;
+	angle_pid_mat[2][0] = 4.2;
 	angle_pid_mat[2][1] = 0.0f;
 	angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.016f;
-	velocity_pid_mat[1][2] = 0.2;
+	velocity_pid_mat[1][1] = 0.015f;
+	velocity_pid_mat[1][2] = 0.24;
 	velocity_pid_mat[1][3] = 0.032;
 
     velocity_pid_mat[2][0] = 0.0;
-	velocity_pid_mat[2][1] = 0.0162f;
-	velocity_pid_mat[2][2] = 0.2f;
-	velocity_pid_mat[2][3] = 0.008f;
+	velocity_pid_mat[2][1] = 0.019f;
+	velocity_pid_mat[2][2] = 0.21f;
+	velocity_pid_mat[2][3] = 0.004f;
 }
 
 float pid_roll(float target, float real, float dt){
@@ -761,32 +771,33 @@ BasicControl::BasicControl(ros::NodeHandle *nh){
 	pwm_cmd.rotorPWM1 = 0.1;
 	pwm_cmd.rotorPWM2 = 0.1;
 	pwm_cmd.rotorPWM3 = 0.1;
-    initNotchFilter(&notch_vel_x, 100.0, 10.0, 100.0);
-    initNotchFilter(&notch_vel_y, 100.0, 10.0, 100.0);
-    initNotchFilter(&notch_vel_z, 100.0, 10.0, 100.0);
 
-  rc_channel1_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc1", 1, std::bind(&BasicControl::channel1_callback, this, std::placeholders::_1));
-  rc_channel2_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc2", 1, std::bind(&BasicControl::channel2_callback, this, std::placeholders::_1));
-  rc_channel3_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc3", 1, std::bind(&BasicControl::channel3_callback, this, std::placeholders::_1));
-  rc_channel4_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc4", 1, std::bind(&BasicControl::channel4_callback, this, std::placeholders::_1));
-  rc_channel5_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc5", 1, std::bind(&BasicControl::channel5_callback, this, std::placeholders::_1));
-  rc_channel6_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc6", 1, std::bind(&BasicControl::channel6_callback, this, std::placeholders::_1));
-  pose_suber = nh->subscribe<nav_msgs::Odometry>("/odometry/filtered", 1, std::bind(&BasicControl::poseCallback, this, std::placeholders::_1));//TODO(change to estimated pose)
-  nh->setParam("/custom_debug/rc_mode", 3);//TODO(change to 0 later)
-  imu_suber = nh->subscribe<sensor_msgs::Imu>("/airsim_node/drone_1/imu/imu", 1, std::bind(&BasicControl::imuCallback, this, std::placeholders::_1));
-  pwm_publisher = nh->advertise<airsim_ros::RotorPWM>("/airsim_node/drone_1/rotor_pwm_cmd", 1);
+	rc_channel1_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc1", 1, std::bind(&BasicControl::channel1_callback, this, std::placeholders::_1));
+	rc_channel2_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc2", 1, std::bind(&BasicControl::channel2_callback, this, std::placeholders::_1));
+	rc_channel3_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc3", 1, std::bind(&BasicControl::channel3_callback, this, std::placeholders::_1));
+	rc_channel4_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc4", 1, std::bind(&BasicControl::channel4_callback, this, std::placeholders::_1));
+	rc_channel5_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc5", 1, std::bind(&BasicControl::channel5_callback, this, std::placeholders::_1));
+	rc_channel6_suber = nh->subscribe<std_msgs::Float32>("/custom_debug/rc6", 1, std::bind(&BasicControl::channel6_callback, this, std::placeholders::_1));
+	pose_suber = nh->subscribe<nav_msgs::Odometry>("/odometry/filtered", 1, std::bind(&BasicControl::poseCallback, this, std::placeholders::_1));//TODO(change to estimated pose)
+	nh->setParam("/custom_debug/rc_mode", 3);//TODO(change to 0 later)
+	imu_suber = nh->subscribe<sensor_msgs::Imu>("/airsim_node/drone_1/imu/imu", 1, std::bind(&BasicControl::imuCallback, this, std::placeholders::_1));
+	pwm_publisher = nh->advertise<airsim_ros::RotorPWM>("/airsim_node/drone_1/rotor_pwm_cmd", 1);
 
-  	rate_x_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_x", 10);
+	rate_x_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_x", 10);
 	rate_y_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_y", 10);
 	rate_z_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_z", 10);
 	rate_x_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_x", 10);
 	rate_y_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_y", 10);
 	rate_z_real_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/real_rate_z", 10);
 
-  rc_mode_timer = nh->createTimer(ros::Duration(0.05), std::bind(&BasicControl::rc_mode_check_callback, this, std::placeholders::_1));
-  pwm_send_timer = nh->createTimer(ros::Duration(0.0125), std::bind(&BasicControl::pwm_send_callback, this, std::placeholders::_1));
+	initButterworthFilter(&world_vel_x_filter, 98.0, 2.5);
+	initButterworthFilter(&world_vel_y_filter, 98.0, 2.5);
+	initButterworthFilter(&world_vel_z_filter, 98.0, 2.5);
 
-  ros::spin();
+	rc_mode_timer = nh->createTimer(ros::Duration(0.05), std::bind(&BasicControl::rc_mode_check_callback, this, std::placeholders::_1));
+	pwm_send_timer = nh->createTimer(ros::Duration(0.0125), std::bind(&BasicControl::pwm_send_callback, this, std::placeholders::_1));
+
+	ros::spin();
 }
 
 BasicControl::~BasicControl(){}
@@ -795,7 +806,7 @@ float target_vel_x;
 float target_vel_y;
 float target_vel_z;
 
-float hover_throttle = 0.175;
+float hover_throttle = 0.18;
 
 float mag_vector(float input_vec[]){
   return sqrt(input_vec[0] * input_vec[0] + input_vec[1] * input_vec[1] + input_vec[2] * input_vec[2]);
@@ -809,24 +820,24 @@ void normalize_vec(float input_vec[], float output_vec[]){
 }
 
 void cross_product(float input_vec1[], float input_vec2[], float output_vec[]){
-  output_vec[0] = input_vec1[1] * input_vec2[2] - input_vec1[2] * input_vec2[1];
-  output_vec[1] = input_vec1[2] * input_vec2[0] - input_vec1[0] * input_vec2[2];
-  output_vec[2] - input_vec1[0] * input_vec2[1] - input_vec1[1] * input_vec2[0];
+	output_vec[0] = input_vec1[1] * input_vec2[2] - input_vec1[2] * input_vec2[1];
+	output_vec[1] = input_vec1[2] * input_vec2[0] - input_vec1[0] * input_vec2[2];
+	output_vec[2] - input_vec1[0] * input_vec2[1] - input_vec1[1] * input_vec2[0];
 }
 
 float dot_product(float input_vec1[], float input_vec2[]){
-  return input_vec1[0] * input_vec2[0] + input_vec1[1] * input_vec2[1] + input_vec1[2] * input_vec2[2];
+	return input_vec1[0] * input_vec2[0] + input_vec1[1] * input_vec2[1] + input_vec1[2] * input_vec2[2];
 }
 
 Quaternion vector_to_quaternion(float input_vec[], float angle){
-  Quaternion quaternion;
-  float half_angle = angle / 2.0;
-  float sin_half_angle = sin(half_angle);
-  quaternion.w = cos(half_angle);
-  quaternion.x = input_vec[0] * sin_half_angle;
-  quaternion.y = input_vec[1] * sin_half_angle;
-  quaternion.z = input_vec[2] * sin_half_angle;
-  return quaternion;
+	Quaternion quaternion;
+	float half_angle = angle / 2.0;
+	float sin_half_angle = sin(half_angle);
+	quaternion.w = cos(half_angle);
+	quaternion.x = input_vec[0] * sin_half_angle;
+	quaternion.y = input_vec[1] * sin_half_angle;
+	quaternion.z = input_vec[2] * sin_half_angle;
+	return quaternion;
 }
 
 void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
@@ -842,8 +853,6 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     body_measure_vel[0] = msg->twist.twist.linear.x;
     body_measure_vel[1] = msg->twist.twist.linear.y;
     body_measure_vel[2] = msg->twist.twist.linear.z;
-
-
 
 	Quaternion odom_pose;
 	odom_pose.w = msg->pose.pose.orientation.w;
@@ -862,6 +871,31 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     float world_measure_vel[3];
 	World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
 
+    double filtered_vel[3];
+
+	filtered_vel[0] = applyButterworthFilter(&world_vel_x_filter, world_measure_vel[0]);
+	filtered_vel[1] = applyButterworthFilter(&world_vel_y_filter, world_measure_vel[1]);
+	filtered_vel[2] = applyButterworthFilter(&world_vel_z_filter, world_measure_vel[2]);
+    
+    std_msgs::Float32 rate_msg;
+
+	rate_msg.data = world_measure_vel[0];
+	rate_x_real_publisher.publish(rate_msg);
+	rate_msg.data = filtered_vel[0];
+	rate_x_target_publisher.publish(rate_msg);
+	rate_msg.data = world_measure_vel[1];
+	rate_y_real_publisher.publish(rate_msg);
+	rate_msg.data = filtered_vel[1];
+	rate_y_target_publisher.publish(rate_msg);
+	rate_msg.data = world_measure_vel[2];
+	rate_z_real_publisher.publish(rate_msg);
+	rate_msg.data = filtered_vel[2];
+	rate_z_target_publisher.publish(rate_msg);
+
+	world_measure_vel[0] = filtered_vel[0];
+    world_measure_vel[1] = filtered_vel[1];
+    world_measure_vel[2] = filtered_vel[2];
+
 //	world_measure_vel[0] = processNotchFilter(&notch_vel_x, world_measure_vel[0]);
 //    world_measure_vel[1] = processNotchFilter(&notch_vel_y, world_measure_vel[1]);
 //    world_measure_vel[2] = processNotchFilter(&notch_vel_z, world_measure_vel[2]);
@@ -876,19 +910,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
     world_force[1] = pid_vy(world_target_vel[1], world_measure_vel[1]);
 	world_force[2] = pid_vz(world_target_vel[2], world_measure_vel[2]);
 
-	std_msgs::Float32 rate_msg;
-	rate_msg.data = world_measure_vel[0];
-	rate_x_real_publisher.publish(rate_msg);
-	rate_msg.data = world_target_vel[0];
-	rate_x_target_publisher.publish(rate_msg);
-	rate_msg.data = world_measure_vel[1];
-	rate_y_real_publisher.publish(rate_msg);
-	rate_msg.data = world_target_vel[1];
-	rate_y_target_publisher.publish(rate_msg);
-	rate_msg.data = world_measure_vel[2];
-	rate_z_real_publisher.publish(rate_msg);
-	rate_msg.data = world_target_vel[2];
-	rate_z_target_publisher.publish(rate_msg);
+
 
 //	float target_mag_vel = mag_vector(world_target_vel);
 //   	float measure_mag_vel = mag_vector(world_measure_vel);

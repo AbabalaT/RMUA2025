@@ -199,7 +199,7 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.z = q_measured.z;
     odom_msg.pose.pose.orientation.w = q_measured.w;
     real_pose_pub.publish(odom_msg);
-    odom_pub.publish(odom_msg);
+//    odom_pub.publish(odom_msg);
     odom_msg.header.frame_id = "map_odom";
     real_map_pub.publish(odom_msg);
 
@@ -245,22 +245,23 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     double conv_2 = 0.01f;
 
     for(int i = 0; i < 35; i++) {
-        odom_msg.pose.covariance[0] = 1e-5;
+        odom_msg.pose.covariance[0] = 0.0;
     }
 
     odom_msg.pose.covariance[0] = conv_1;
     odom_msg.pose.covariance[7] = conv_1;
     odom_msg.pose.covariance[14] = conv_1;
+
     odom_msg.pose.covariance[21] = conv_2;
     odom_msg.pose.covariance[28] = conv_2;
     odom_msg.pose.covariance[35] = conv_2;
 
-    odom_msg.twist.twist.linear.x = 0.0;
-    odom_msg.twist.twist.linear.y = 0.0;
-    odom_msg.twist.twist.linear.z = 0.0;
-    odom_msg.twist.twist.angular.x = 0.0;
-    odom_msg.twist.twist.angular.y = 0.0;
-    odom_msg.twist.twist.angular.z = 0.0;
+//    odom_msg.twist.twist.linear.x = 0.0;
+//    odom_msg.twist.twist.linear.y = 0.0;
+//    odom_msg.twist.twist.linear.z = 0.0;
+//    odom_msg.twist.twist.angular.x = 0.0;
+//    odom_msg.twist.twist.angular.y = 0.0;
+//    odom_msg.twist.twist.angular.z = 0.0;
 
     odom_pub.publish(odom_msg);
     odom_msg.header.frame_id = "map_odom";
@@ -333,9 +334,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.linear_acceleration.y = -acc_body.y();
     new_msg.linear_acceleration.z = -acc_body.z();
 
-
-//
-//    double temp = new_msg.angular_velocity.x;
     new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
     new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
 
