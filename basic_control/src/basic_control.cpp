@@ -139,14 +139,14 @@ ButterworthFilter world_vel_x_filter, world_vel_y_filter, world_vel_z_filter;
 
 void pid_init(void){
 	mat_pid[0][0] = 0.0;
-	mat_pid[0][1] = 7.2;
-    mat_pid[0][2] = 52.0;
-	mat_pid[0][3] = 0.06;
+	mat_pid[0][1] = 7.0;
+    mat_pid[0][2] = 48.0;
+	mat_pid[0][3] = 0.04;
 	
 	mat_pid[1][0] = 0.0;
-	mat_pid[1][1] = 7.2f;
-	mat_pid[1][2] = 52.0;
-	mat_pid[1][3] = 0.06;
+	mat_pid[1][1] = 7.0f;
+	mat_pid[1][2] = 48.0;
+	mat_pid[1][3] = 0.04;
 	
 	mat_pid[2][0] = 0.0;
 	mat_pid[2][1] = 120.0f;
@@ -166,12 +166,12 @@ void pid_init(void){
 	angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.015f;
+	velocity_pid_mat[1][1] = 0.022f;
 	velocity_pid_mat[1][2] = 0.24;
 	velocity_pid_mat[1][3] = 0.032;
 
     velocity_pid_mat[2][0] = 0.0;
-	velocity_pid_mat[2][1] = 0.019f;
+	velocity_pid_mat[2][1] = 0.03f;
 	velocity_pid_mat[2][2] = 0.21f;
 	velocity_pid_mat[2][3] = 0.004f;
 }
@@ -1000,8 +1000,6 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 	float measure_yaw = 0.0f;
     measure_yaw = atan2(2.0 * (measure_quaternion.w * measure_quaternion.z + measure_quaternion.x * measure_quaternion.y),
 		1.0 - 2.0 * (measure_quaternion.y * measure_quaternion.y + measure_quaternion.z * measure_quaternion.z));
-//    measure_yaw = measure_yaw * 180.0 / 3.14159265359;
-//    std::cout << "measure_yaw: " << measure_yaw << std::endl;
 
     Quaternion de_yaw_quaternion = yaw_to_quaternion(-measure_yaw);
     Quaternion de_yaw_ahrs = multiply_quaternion(&de_yaw_quaternion, &measure_quaternion);
