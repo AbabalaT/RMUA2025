@@ -73,37 +73,40 @@ void getcloud_air(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
 
     pcl::transformPointCloud(*lasercloud, *pcl2cloud, transform_eigen);
 
-    current_x = base2map.transform.translation.x;
-    current_y = base2map.transform.translation.y;
-    current_z = base2map.transform.translation.z;
-
-    if ((pcl2cloud->points.size()) == 0){
-        return;
-    }else{
-        long point_num = 0;
-        for (long i = 0; i < pcl2cloud->points.size(); i = i + 1){
-            if (pcl2cloud->points[i].x - current_x < 0.25
-                  and pcl2cloud->points[i].x - current_x > -0.25
-                  and pcl2cloud->points[i].y - current_y < 0.25
-                  and pcl2cloud->points[i].y - current_y > -0.25){
-                continue;
-            }
-            if (pcl2cloud->points[i].z - current_z < 0.4 and pcl2cloud->points[i].z - current_z > -0.4)
-            {
-                pcl2cloud->points[i].z = 0.1;
-                pcl2cloud_out->points.push_back(pcl2cloud->points[i]);
-                point_num = point_num + 1;
-            }
-        }
-
-        pcl2cloud_out->width = point_num;
-        pcl2cloud_out->height = 1;
+//    current_x = base2map.transform.translation.x;
+//    current_y = base2map.transform.translation.y;
+//    current_z = base2map.transform.translation.z;
+//
+//    if ((pcl2cloud->points.size()) == 0){
+//        return;
+//    }else{
+//        long point_num = 0;
+//        for (long i = 0; i < pcl2cloud->points.size(); i = i + 1){
+//            if (pcl2cloud->points[i].x - current_x < 0.25
+//                  and pcl2cloud->points[i].x - current_x > -0.25
+//                  and pcl2cloud->points[i].y - current_y < 0.25
+//                  and pcl2cloud->points[i].y - current_y > -0.25){
+//                continue;
+//            }
+//            if (pcl2cloud->points[i].z - current_z < 0.4 and pcl2cloud->points[i].z - current_z > -0.4)
+//            {
+//                pcl2cloud->points[i].z = 0.1;
+//                pcl2cloud_out->points.push_back(pcl2cloud->points[i]);
+//                point_num = point_num + 1;
+//            }
+//        }
+//
+//        pcl2cloud_out->width = point_num;
+//        pcl2cloud_out->height = 1;
 //        pcl2cloud_out->points.resize(pcl2cloud_out->width * pcl2cloud_out->height);
-        pcl::toROSMsg(*pcl2cloud_out, ROSPCL_output);
+
+//        pcl::toROSMsg(*pcl2cloud_out, ROSPCL_output);
+        pcl::toROSMsg(*pcl2cloud, ROSPCL_output);
+
         ROSPCL_output.header.frame_id = "map";
         ROSPCL_output.header.stamp = ros::Time::now();
         pcl_publisher.publish(ROSPCL_output);
-    }
+//    }
 }
 
 int main(int argc, char **argv)
