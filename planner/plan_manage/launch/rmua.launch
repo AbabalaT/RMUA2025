@@ -1,6 +1,6 @@
 <launch>
     <arg name="map_size_x" value="1300.0"/>
-    <arg name="map_size_y" value="1300.0"/>
+    <arg name="map_size_y" value="1500.0"/>
     <arg name="map_size_z" value="200.0"/>
     <arg name="odom_topic" value="visual_slam/odom" />
 
@@ -13,7 +13,24 @@
         <arg name="map_size_y" value="$(arg map_size_y)"/>
         <arg name="map_size_z" value="$(arg map_size_z)"/>
         <arg name="odom_topic" value="$(arg odom_topic)"/>
+
+<!--         <arg name="flight_type" value="1"/> -->
+
         <arg name="flight_type" value="1"/>
+        <arg name="point_num" default="4"/>
+        <arg name="target0_x" default="153.0"/>
+        <arg name="target0_y" default="1324.0"/>
+        <arg name="target0_z" default="37.0"/>
+        <arg name="target1_x" default="146.0"/>
+        <arg name="target1_y" default="1306.0"/>
+        <arg name="target1_z" default="37.0"/>
+        <arg name="target2_x" default="139.0"/>
+        <arg name="target2_y" default="1284.0"/>
+        <arg name="target2_z" default="36.0"/>
+        <arg name="target3_x" default="132.0"/>
+        <arg name="target3_y" default="1265.0"/>
+        <arg name="target3_z" default="35.0"/>
     </include>
+<!--     <include file="$(find ego_planner)/launch/rviz.launch"/> -->
 </launch>
 

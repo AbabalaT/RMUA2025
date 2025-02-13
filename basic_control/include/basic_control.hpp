@@ -8,6 +8,7 @@
 #include <geometry_msgs/Twist.h>
 #include "airsim_ros/VelCmd.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "quadrotor_msgs/GoalSet.h"
 #include "airsim_ros/RotorPWM.h"
 #include <sensor_msgs/Imu.h>
 #include <std_msgs/Float32.h>
@@ -31,6 +32,8 @@ private:
     ros::Subscriber rc_channel5_suber;
     ros::Subscriber rc_channel6_suber;
 
+    ros::Subscriber clicked_point_suber;
+
     ros::Subscriber imu_suber;
 	ros::Subscriber pose_suber;
 
@@ -42,6 +45,7 @@ private:
     ros::Publisher rate_x_real_publisher;
     ros::Publisher rate_y_real_publisher;
     ros::Publisher rate_z_real_publisher;
+    ros::Publisher quad_goal_publisher;
 
     ros::Timer rc_mode_timer;
     ros::Timer pwm_send_timer;
@@ -55,6 +59,8 @@ private:
 	void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void rc_mode_check_callback(const ros::TimerEvent& event);
 	void pwm_send_callback(const ros::TimerEvent& event);
+
+    void rviz_clicked_point_callback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
     void imuCallback(const sensor_msgs::Imu::ConstPtr& msg);
 

@@ -756,6 +756,8 @@ void World_to_Body(float *vector_e, float *vector_v,Quaternion Qin)
 
 }
 
+quadrotor_msgs::GoalSet ego_goal_msg;
+
 int main(int argc, char** argv){
   ros::init(argc, argv, "basic_control");
   ros::NodeHandle node_handle;
@@ -847,6 +849,9 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg){
 		target_vel_body[0] = rc_channel[1] / 80.0f;
 		target_w_yaw = rc_channel[3] * -0.002341f;
 		target_vel_body[2] = rc_channel[2] / 80.0f;
+        if(target_vel_body[2] < 0.1 and target_vel_body[2] > -0.1 ){
+          target_vel_body[2] = 0.0;
+        }
 	}
 
     float body_measure_vel[3];
@@ -1158,6 +1163,14 @@ void BasicControl::channel5_callback(const std_msgs::Float32::ConstPtr& msg){
 }
 void BasicControl::channel6_callback(const std_msgs::Float32::ConstPtr& msg){
   rc_channel[5] = msg->data;
+}
+
+void BasicControl::rviz_clicked_point_callback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+	ego_goal_msg.drone_id = 0;
+	ego_goal_msg.goal[0] = msg->pose.position.x;
+    ego_goal_msg.goal[1] = msg->pose.position.y;
+    ego_goal_msg.goal[2] = msg->pose.position.z;
+    quad_goal_publisher.publish(ego_goal_msg);
 }
 
 void BasicControl::rc_mode_check_callback(const ros::TimerEvent& event){
