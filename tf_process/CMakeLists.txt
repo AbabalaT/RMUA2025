@@ -10,6 +10,7 @@ find_package(
         tf2
         tf2_ros
         cv_bridge
+        quadrotor_msgs
 )
 find_package(OpenCV REQUIRED)
 

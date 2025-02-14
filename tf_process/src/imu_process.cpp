@@ -203,14 +203,14 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.header.frame_id = "map_odom";
     real_map_pub.publish(odom_msg);
 
-    pcl::PointXYZ new_point;
-    new_point.x = odom_msg.pose.pose.position.x;
-    new_point.y = odom_msg.pose.pose.position.y;
-    new_point.z = odom_msg.pose.pose.position.z;
-    route_cloud->points.push_back(new_point);
-    if(rc_channel[5] < 100){
-      outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
-    }
+    // pcl::PointXYZ new_point;
+    // new_point.x = odom_msg.pose.pose.position.x;
+    // new_point.y = odom_msg.pose.pose.position.y;
+    // new_point.z = odom_msg.pose.pose.position.z;
+    // route_cloud->points.push_back(new_point);
+    // if(rc_channel[5] < 100){
+    //   outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
+    // }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
@@ -446,12 +446,12 @@ int main(int argc, char **argv) {
     mahony_quaternion[1] = 0.0;
     mahony_quaternion[2] = 0.0;
     mahony_quaternion[3] = 0.0;
-    pcl::io::loadPCDFile<pcl::PointXYZ>("/home/tc/route.pcd", *route_cloud);
-    outFile.open("/home/tc/route_point.route", std::ios::app);
+    // pcl::io::loadPCDFile<pcl::PointXYZ>("/home/tc/route.pcd", *route_cloud);
+    // outFile.open("/home/tc/route_point.route", std::ios::app);
     ros::spin();
-    route_cloud->width = route_cloud->points.size();
-    route_cloud->height = 1;
-    pcl::io::savePCDFileASCII("/home/tc/route.pcd", *route_cloud);
-    outFile.close();
+    // route_cloud->width = route_cloud->points.size();
+    // route_cloud->height = 1;
+    // pcl::io::savePCDFileASCII("/home/tc/route.pcd", *route_cloud);
+    // outFile.close();
     return 0;
 }

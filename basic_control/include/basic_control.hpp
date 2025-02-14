@@ -5,6 +5,7 @@
 #define BASIC_CONTROL_HPP
 
 #include <ros/ros.h>
+#include <vector>
 #include <geometry_msgs/Twist.h>
 #include "airsim_ros/VelCmd.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -12,7 +13,7 @@
 #include "airsim_ros/RotorPWM.h"
 #include <sensor_msgs/Imu.h>
 #include <std_msgs/Float32.h>
-
+#include <std_msgs/Float32MultiArray.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -37,6 +38,8 @@ private:
     ros::Subscriber imu_suber;
 	ros::Subscriber pose_suber;
 
+    ros::Subscriber tf_cmd_suber;
+
     ros::Publisher pwm_publisher;
 
     ros::Publisher rate_x_target_publisher;
@@ -59,6 +62,8 @@ private:
 	void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void rc_mode_check_callback(const ros::TimerEvent& event);
 	void pwm_send_callback(const ros::TimerEvent& event);
+
+    void tf_cmd_callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
 
     void rviz_clicked_point_callback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
