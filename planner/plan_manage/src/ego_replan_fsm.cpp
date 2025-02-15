@@ -61,6 +61,7 @@ namespace ego_planner
     if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
     {
       waypoint_sub_ = nh.subscribe("/goal", 1, &EGOReplanFSM::waypointCallback, this);
+      waypath_sub_ = nh.subscribe("/exe/path", 1, &EGOReplanFSM::waypathCallback, this);
     }
     else if (target_type_ == TARGET_TYPE::PRESET_TARGET)
     {
@@ -502,7 +503,7 @@ namespace ego_planner
     return true;
   }
 
-  bool EGOReplanFSM::planNextWaypoint(const Eigen::Vector3d next_wp)
+  bool EGOReplanFSM::planNextWaypoint(const Eigen::Vector3d next_wp)//TODO:add function
   {
     bool success = false;
     std::vector<Eigen::Vector3d> one_pt_wps;
@@ -516,6 +517,55 @@ namespace ego_planner
     if (success)
     {
       final_goal_ = next_wp;
+
+      /*** display ***/
+      constexpr double step_size_t = 0.1;
+      int i_end = floor(planner_manager_->traj_.global_traj.duration / step_size_t);
+      vector<Eigen::Vector3d> gloabl_traj(i_end);
+      for (int i = 0; i < i_end; i++)
+      {
+        gloabl_traj[i] = planner_manager_->traj_.global_traj.traj.getPos(i * step_size_t);
+      }
+
+      have_target_ = true;
+      have_new_target_ = true;
+
+      /*** FSM ***/
+      if (exec_state_ != WAIT_TARGET)
+      {
+        while (exec_state_ != EXEC_TRAJ)
+        {
+          ros::spinOnce();
+          ros::Duration(0.001).sleep();
+        }
+        changeFSMExecState(REPLAN_TRAJ, "TRIG");
+      }
+
+      // visualization_->displayGoalPoint(final_goal_, Eigen::Vector4d(1, 0, 0, 1), 0.3, 0);
+      visualization_->displayGlobalPathList(gloabl_traj, 0.1, 0);
+    }
+    else
+    {
+      ROS_ERROR("Unable to generate global trajectory!");
+    }
+
+    return success;
+  }
+
+  bool EGOReplanFSM::planNextWaypoint(const std::vector<Eigen::Vector3d> next_wp)//TODO:add function
+  {
+    bool success = false;
+    // std::vector<Eigen::Vector3d> one_pt_wps;
+    // one_pt_wps.push_back(next_wp);
+    success = planner_manager_->planGlobalTrajWaypoints(
+        odom_pos_, odom_vel_, Eigen::Vector3d::Zero(),
+        next_wp, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
+
+    // visualization_->displayGoalPoint(next_wp, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
+
+    if (success)
+    {
+      final_goal_ = *next_wp.end();
 
       /*** display ***/
       constexpr double step_size_t = 0.1;
@@ -589,6 +639,22 @@ namespace ego_planner
 
     Eigen::Vector3d end_wp(msg->goal[0], msg->goal[1], msg->goal[2]);
     if (planNextWaypoint(end_wp))
+    {
+      have_trigger_ = true;
+    }
+  }
+
+  void EGOReplanFSM::waypathCallback(const nav_msgs::Path::ConstPtr& msg)
+  {
+    ROS_INFO("Received path.");
+    std::vector<Eigen::Vector3d> path_points_;
+    for (const auto& pose : msg->poses) {
+      Eigen::Vector3d point(pose.pose.position.x,
+                            pose.pose.position.y,
+                            pose.pose.position.z);
+      path_points_.push_back(point);
+    }
+    if (planNextWaypoint(path_points_))
     {
       have_trigger_ = true;
     }
