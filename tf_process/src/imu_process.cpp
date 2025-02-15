@@ -62,21 +62,25 @@ std::ofstream outFile;
 
 float init_pose_x, init_pose_y, init_pose_z;
 
-typedef struct {
+typedef struct
+{
     float w, x, y, z;
 } Quaternion;
 
 float mahony_quaternion[4];
 
-Quaternion multiply_quaternion(Quaternion *q1, Quaternion *q2) {
+Quaternion multiply_quaternion(Quaternion* q1, Quaternion* q2)
+{
     Quaternion result;
-    if(q1->w < 0.0f){
+    if (q1->w < 0.0f)
+    {
         q1->w = -1.0f * q1->w;
         q1->x = -1.0f * q1->x;
         q1->y = -1.0f * q1->y;
         q1->z = -1.0f * q1->z;
     }
-    if(q2->w < 0.0f){
+    if (q2->w < 0.0f)
+    {
         q2->w = -1.0f * q2->w;
         q2->x = -1.0f * q2->x;
         q2->y = -1.0f * q2->y;
@@ -86,7 +90,8 @@ Quaternion multiply_quaternion(Quaternion *q1, Quaternion *q2) {
     result.x = q1->w * q2->x + q1->x * q2->w + q1->y * q2->z - q1->z * q2->y;
     result.y = q1->w * q2->y - q1->x * q2->z + q1->y * q2->w + q1->z * q2->x;
     result.z = q1->w * q2->z + q1->x * q2->y - q1->y * q2->x + q1->z * q2->w;
-    if(result.w < 0.0f){
+    if (result.w < 0.0f)
+    {
         result.w = -result.w;
         result.x = -result.x;
         result.y = -result.y;
@@ -95,13 +100,15 @@ Quaternion multiply_quaternion(Quaternion *q1, Quaternion *q2) {
     return result;
 }
 
-Quaternion quaternion_conjugate(Quaternion q) {
+Quaternion quaternion_conjugate(Quaternion q)
+{
     Quaternion result = {q.w, -q.x, -q.y, -q.z};
     return result;
 }
 
 // Function to rotate a vector by a quaternion
-void rotateVectorByQuaternion(Quaternion q, float v[3], float result[3]) {
+void rotateVectorByQuaternion(Quaternion q, float v[3], float result[3])
+{
     // Convert the vector into a quaternion with w = 0
     Quaternion q_vec = {0.0f, v[0], v[1], v[2]};
 
@@ -109,7 +116,7 @@ void rotateVectorByQuaternion(Quaternion q, float v[3], float result[3]) {
     Quaternion q_conj = quaternion_conjugate(q);
 
     // Perform the rotation: q * v * q^-1
-    Quaternion temp = multiply_quaternion(&q, &q_vec);         // q * v
+    Quaternion temp = multiply_quaternion(&q, &q_vec); // q * v
     Quaternion q_result = multiply_quaternion(&temp, &q_conj); // (q * v) * q^-1
 
     // The result quaternion's x, y, z are the rotated vector components
@@ -122,39 +129,43 @@ Quaternion init_quat;
 Quaternion world_quat;
 Quaternion world_quat_no_rotation;
 
-Quaternion body_axis_z(Quaternion measure, float theta) {
-  Quaternion rotation;
-  rotation.w = cos(theta/2.0f);
-  rotation.x = 0.0f;
-  rotation.y = 0.0f;
-  rotation.z = sin(theta/2.0f);
+Quaternion body_axis_z(Quaternion measure, float theta)
+{
+    Quaternion rotation;
+    rotation.w = cos(theta / 2.0f);
+    rotation.x = 0.0f;
+    rotation.y = 0.0f;
+    rotation.z = sin(theta / 2.0f);
 
-  Quaternion result = multiply_quaternion(&measure, &rotation);
-  return result;
+    Quaternion result = multiply_quaternion(&measure, &rotation);
+    return result;
 }
 
-void InitialPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    init_pose_x =  msg->pose.position.y;
-    init_pose_y =  msg->pose.position.x;
+void InitialPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+    init_pose_x = msg->pose.position.y;
+    init_pose_y = msg->pose.position.x;
     init_pose_z = -msg->pose.position.z - 0.3f;
 
     init_quat.x = msg->pose.orientation.y;
     init_quat.y = msg->pose.orientation.x;
     init_quat.z = -msg->pose.orientation.z;
     init_quat.w = msg->pose.orientation.w;
-	world_quat_no_rotation = init_quat;
-	Quaternion quat = body_axis_z(init_quat, 3.14159265359f / 2.0f);
+    world_quat_no_rotation = init_quat;
+    Quaternion quat = body_axis_z(init_quat, 3.14159265359f / 2.0f);
     init_quat = quat;
 }
 
 float rc_channel[6];
 float pre_rc_channel[6];
 
-void channel6_callback(const std_msgs::Float32::ConstPtr& msg){
-  rc_channel[5] = msg->data;
+void channel6_callback(const std_msgs::Float32::ConstPtr& msg)
+{
+    rc_channel[5] = msg->data;
 }
 
-void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
     nav_msgs::Odometry odom_msg;
 
 
@@ -165,7 +176,8 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     double conv_1 = 0.1f;
     double conv_2 = 0.01f;
 
-    for(int i = 0; i < 35; i++) {
+    for (int i = 0; i < 35; i++)
+    {
         odom_msg.pose.covariance[0] = 0.0;
     }
 
@@ -199,7 +211,7 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.pose.orientation.z = q_measured.z;
     odom_msg.pose.pose.orientation.w = q_measured.w;
     real_pose_pub.publish(odom_msg);
-//    odom_pub.publish(odom_msg);
+    //    odom_pub.publish(odom_msg);
     odom_msg.header.frame_id = "map_odom";
     real_map_pub.publish(odom_msg);
 
@@ -213,7 +225,8 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     // }
 }
 
-void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
     nav_msgs::Odometry odom_msg;
     odom_msg.header.stamp = msg->header.stamp;
     odom_msg.header.frame_id = "map";
@@ -244,7 +257,8 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     double conv_1 = 0.2f;
     double conv_2 = 0.01f;
 
-    for(int i = 0; i < 35; i++) {
+    for (int i = 0; i < 35; i++)
+    {
         odom_msg.pose.covariance[0] = 0.0;
     }
 
@@ -256,12 +270,12 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     odom_msg.pose.covariance[28] = conv_2;
     odom_msg.pose.covariance[35] = conv_2;
 
-//    odom_msg.twist.twist.linear.x = 0.0;
-//    odom_msg.twist.twist.linear.y = 0.0;
-//    odom_msg.twist.twist.linear.z = 0.0;
-//    odom_msg.twist.twist.angular.x = 0.0;
-//    odom_msg.twist.twist.angular.y = 0.0;
-//    odom_msg.twist.twist.angular.z = 0.0;
+    //    odom_msg.twist.twist.linear.x = 0.0;
+    //    odom_msg.twist.twist.linear.y = 0.0;
+    //    odom_msg.twist.twist.linear.z = 0.0;
+    //    odom_msg.twist.twist.angular.x = 0.0;
+    //    odom_msg.twist.twist.angular.y = 0.0;
+    //    odom_msg.twist.twist.angular.z = 0.0;
 
     odom_pub.publish(odom_msg);
     odom_msg.header.frame_id = "map_odom";
@@ -271,18 +285,18 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 double zero[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 int imu_cnt = 0;
 
-void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
-
-  	imu_stamp = ros::Time::now();
-	sensor_msgs::Imu new_msg = *msg;
-//	new_msg.header.stamp = ros::Time::now();
-	new_msg.header.frame_id = "base_link";
+void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
+{
+    imu_stamp = ros::Time::now();
+    sensor_msgs::Imu new_msg = *msg;
+    //	new_msg.header.stamp = ros::Time::now();
+    new_msg.header.frame_id = "base_link";
 
     Quaternion q_measure;
     q_measure.w = new_msg.orientation.w;
     q_measure.x = new_msg.orientation.y;
     q_measure.y = new_msg.orientation.x;
-    q_measure.z = - new_msg.orientation.z;
+    q_measure.z = -new_msg.orientation.z;
 
     new_msg.orientation.x = q_measure.x;
     new_msg.orientation.y = q_measure.y;
@@ -318,11 +332,12 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.linear_acceleration_covariance[6] = conv_4;
     new_msg.linear_acceleration_covariance[7] = conv_4;
 
-//    MahonyAHRSupdateIMU(mahony_quaternion, new_msg.angular_velocity.x, new_msg.angular_velocity.y, new_msg.angular_velocity.z,
-//                        new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
-	//ROS_INFO("IMU quaternion: w: %f, x: %f, y:%f, z:%f", mahony_quaternion[0], mahony_quaternion[1], mahony_quaternion[2], mahony_quaternion[3]);
+    //    MahonyAHRSupdateIMU(mahony_quaternion, new_msg.angular_velocity.x, new_msg.angular_velocity.y, new_msg.angular_velocity.z,
+    //                        new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
+    //ROS_INFO("IMU quaternion: w: %f, x: %f, y:%f, z:%f", mahony_quaternion[0], mahony_quaternion[1], mahony_quaternion[2], mahony_quaternion[3]);
 
-    tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z, new_msg.orientation.w);
+    tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z,
+                                       new_msg.orientation.w);
     tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
     tf2::Vector3 acc_body(new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
 
@@ -337,45 +352,51 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
     new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
 
-	if(imu_cnt < 300){
-          imu_cnt = imu_cnt+1;
-          zero[0] += new_msg.linear_acceleration.x;
-          zero[1] += new_msg.linear_acceleration.y;
-          zero[2] += new_msg.linear_acceleration.z;
-          zero[3] += new_msg.angular_velocity.x;
-          zero[4] += new_msg.angular_velocity.y;
-          zero[5] += new_msg.angular_velocity.z;
-          if(imu_cnt == 300){
-			zero[0] = zero[0] / -300.0;
+    if (imu_cnt < 300)
+    {
+        imu_cnt = imu_cnt + 1;
+        zero[0] += new_msg.linear_acceleration.x;
+        zero[1] += new_msg.linear_acceleration.y;
+        zero[2] += new_msg.linear_acceleration.z;
+        zero[3] += new_msg.angular_velocity.x;
+        zero[4] += new_msg.angular_velocity.y;
+        zero[5] += new_msg.angular_velocity.z;
+        if (imu_cnt == 300)
+        {
+            zero[0] = zero[0] / -300.0;
             zero[1] = zero[1] / -300.0;
             zero[2] = zero[2] / -300.0;
             zero[3] = zero[3] / -300.0;
             zero[4] = zero[4] / -300.0;
             zero[5] = zero[5] / -300.0;
-            std::cout<<zero[0]<<" "<<zero[1]<<" "<<zero[2]<<" "<<zero[3]<<std::endl;
-          }
-	}else{
-		new_msg.linear_acceleration.x += zero[0];
-    	new_msg.linear_acceleration.y += zero[1];
-    	new_msg.linear_acceleration.z += zero[2];
-		new_msg.angular_velocity.x += zero[3];
-    	new_msg.angular_velocity.y += zero[4];
-    	new_msg.angular_velocity.z += zero[5];
-	}
+            std::cout << zero[0] << " " << zero[1] << " " << zero[2] << " " << zero[3] << std::endl;
+        }
+    }
+    else
+    {
+        new_msg.linear_acceleration.x += zero[0];
+        new_msg.linear_acceleration.y += zero[1];
+        new_msg.linear_acceleration.z += zero[2];
+        new_msg.angular_velocity.x += zero[3];
+        new_msg.angular_velocity.y += zero[4];
+        new_msg.angular_velocity.z += zero[5];
+    }
 
     imu_now_pub.publish(new_msg);
     Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
     world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
 }
 
-void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
+void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+{
     sensor_msgs::PointCloud2 new_msg = *msg;
     new_msg.header.stamp = ros::Time::now();
-//    new_msg.header.frame_id = "body";
+    //    new_msg.header.frame_id = "body";
     pcl_pub.publish(new_msg);
 }
 
-void project2plane_callback(const ros::TimerEvent&){
+void project2plane_callback(const ros::TimerEvent&)
+{
     static tf2_ros::TransformBroadcaster br;
     geometry_msgs::TransformStamped trans;
 
@@ -392,10 +413,12 @@ void project2plane_callback(const ros::TimerEvent&){
     br.sendTransform(trans);
 
     geometry_msgs::TransformStamped base2plane;
-    try {
+    try
+    {
         base2plane = tfBuffer.lookupTransform("map", "base_link", ros::Time(0));
     }
-    catch (tf2::TransformException &ex) {
+    catch (tf2::TransformException& ex)
+    {
         ROS_WARN("BaseLink Get TF ERROR!");
         return;
     }
@@ -403,8 +426,10 @@ void project2plane_callback(const ros::TimerEvent&){
     base2plane.header.stamp = ros::Time::now();
     base2plane.child_frame_id = "plane_base_link";
     br.sendTransform(base2plane);
-    tf2::Quaternion b2m{base2plane.transform.rotation.x, base2plane.transform.rotation.y,
-                        base2plane.transform.rotation.z, base2plane.transform.rotation.w};
+    tf2::Quaternion b2m{
+        base2plane.transform.rotation.x, base2plane.transform.rotation.y,
+        base2plane.transform.rotation.z, base2plane.transform.rotation.w
+    };
     double roll = 0, pitch = 0, yaw = 0;
     tf2::Matrix3x3(b2m).getRPY(roll, pitch, yaw);
     tf2::Quaternion q;
@@ -414,11 +439,12 @@ void project2plane_callback(const ros::TimerEvent&){
     base2plane.transform.rotation.z = q.z();
     base2plane.transform.rotation.w = q.w();
     base2plane.header.stamp = ros::Time::now();
-	base2plane.child_frame_id = "nav_base_link";
+    base2plane.child_frame_id = "nav_base_link";
     br.sendTransform(base2plane);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
     ros::init(argc, argv, "imu_process");
     ros::NodeHandle pnh("~");
     tf2_ros::TransformListener tfListener(tfBuffer);
@@ -431,7 +457,7 @@ int main(int argc, char **argv) {
     //ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
     ros::Subscriber init_sub = pnh.subscribe("/airsim_node/initial_pose", 10, InitialPoseCallback);
 
-    ros::Subscriber rc6_sub =pnh.subscribe("/custom_debug/rc6", 10, channel6_callback);
+    ros::Subscriber rc6_sub = pnh.subscribe("/custom_debug/rc6", 10, channel6_callback);
 
     imu_now_pub = pnh.advertise<sensor_msgs::Imu>("/ekf/imu_now", 10);
     pcl_pub = pnh.advertise<sensor_msgs::PointCloud2>("/ekf/pcl", 10);
@@ -440,7 +466,7 @@ int main(int argc, char **argv) {
     real_map_pub = pnh.advertise<nav_msgs::Odometry>("/debug/real_map_odom", 10);
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
     ahrs_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/ahrs", 10);
-	uwb_map_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb2", 10);
+    uwb_map_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb2", 10);
 
     mahony_quaternion[0] = 1.0;
     mahony_quaternion[1] = 0.0;

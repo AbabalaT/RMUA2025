@@ -26,7 +26,8 @@ quadrotor_msgs::PositionCommand rcv_cmd_msg;
 
 float odom_pos[3];
 
-struct drone_cmd{
+struct drone_cmd
+{
     float pos[3];
     float vel[3];
     float acc[3];
@@ -34,89 +35,121 @@ struct drone_cmd{
     float w_yaw;
 };
 
-float point_distance(float p1[], float p2[]) {
-  float dist = 0;
-  for (int i = 0; i < 3; i++) {
-    dist += (p2[i] - p1[i]) * (p2[i] - p1[i]);
-  }
-  return sqrt(dist);
+float point_distance(const float p1[], const float p2[])
+{
+    float dist = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        dist += (p2[i] - p1[i]) * (p2[i] - p1[i]);
+    }
+    return sqrt(dist);
 }
 
 std::list<drone_cmd> drone_cmds;
 
-void poseCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
+{
     odom_pos[0] = msg->pose.pose.position.x;
     odom_pos[1] = msg->pose.pose.position.y;
     odom_pos[2] = msg->pose.pose.position.z;
 }
 
-void drone_cmd_callback(const quadrotor_msgs::PositionCommandConstPtr& msg){
-    drone_cmd received_drone_cmd;
-    received_drone_cmd.pos[0] = msg->position.x;
-    received_drone_cmd.pos[1] = msg->position.y;
-    received_drone_cmd.pos[2] = msg->position.z;
-    received_drone_cmd.vel[0] = msg->velocity.x;
-    received_drone_cmd.vel[1] = msg->velocity.y;
-    received_drone_cmd.vel[2] = msg->velocity.z;
-    received_drone_cmd.acc[0] = msg->acceleration.x;
-    received_drone_cmd.acc[1] = msg->acceleration.y;
-    received_drone_cmd.acc[2] = msg->acceleration.z;
-    received_drone_cmd.yaw = msg->yaw;
-    received_drone_cmd.w_yaw = msg->yaw_dot;
-    drone_cmds.push_back(received_drone_cmd);
+void drone_cmd_callback(const quadrotor_msgs::PositionCommandConstPtr& msg)
+{
+    auto received_drone_cmd = std::make_shared<drone_cmd>();
+    received_drone_cmd->pos[0] = msg->position.x;
+    received_drone_cmd->pos[1] = msg->position.y;
+    received_drone_cmd->pos[2] = msg->position.z;
+    received_drone_cmd->vel[0] = msg->velocity.x;
+    received_drone_cmd->vel[1] = msg->velocity.y;
+    received_drone_cmd->vel[2] = msg->velocity.z;
+    received_drone_cmd->acc[0] = msg->acceleration.x;
+    received_drone_cmd->acc[1] = msg->acceleration.y;
+    received_drone_cmd->acc[2] = msg->acceleration.z;
+    received_drone_cmd->yaw = msg->yaw;
+    received_drone_cmd->w_yaw = msg->yaw_dot;
+    // drone_cmds.push_back(received_drone_cmd);
+    float cmd_array[11] = {
+        received_drone_cmd->pos[0], received_drone_cmd->pos[1], received_drone_cmd->pos[2],
+        received_drone_cmd->vel[0], received_drone_cmd->vel[1], received_drone_cmd->vel[2],
+        received_drone_cmd->acc[0], received_drone_cmd->acc[1], received_drone_cmd->acc[2],
+        received_drone_cmd->yaw, received_drone_cmd->w_yaw
+    };
+    std_msgs::Float32MultiArray cmd_msg;
+    cmd_msg.data.assign(cmd_array, cmd_array + 11);
+    cmd_pub.publish(cmd_msg);
 }
 
-void pub_required_cmd(const ros::TimerEvent&){
-  	static bool approaching = false;
-    if(drone_cmds.size() > 1){
+void pub_required_cmd(const ros::TimerEvent&)
+{
+    static bool approaching = false;
+    if (drone_cmds.size() > 1)
+    {
         auto cmd_selected = drone_cmds.begin();
         auto cmd_iter = std::next(cmd_selected);
         auto cmd_distance = point_distance(cmd_selected->pos, odom_pos);
-        for(int i = 0; i<150; i++){
-			auto iter_distance = point_distance(cmd_iter->pos, odom_pos);
-            if(iter_distance < cmd_distance){
-          		cmd_selected = cmd_iter;
-          		cmd_distance = iter_distance;
-        	}
-			if(cmd_iter == drone_cmds.end()){
-            	break;
-			}
+        for (int i = 0; i < 150; i++)
+        {
+            auto iter_distance = point_distance(cmd_iter->pos, odom_pos);
+            if (iter_distance < cmd_distance)
+            {
+                cmd_selected = cmd_iter;
+                cmd_distance = iter_distance;
+            }
+            if (cmd_iter == drone_cmds.end())
+            {
+                break;
+            }
             cmd_iter++;
         }
-		std::cout<<"start pop"<<std::endl;
-		while(1){
-            if(cmd_selected == drone_cmds.begin()){
-             	break;
-            }else{
-              drone_cmds.pop_front();
+        std::cout << "start pop" << std::endl;
+        while (1)
+        {
+            if (cmd_selected == drone_cmds.begin())
+            {
+                break;
             }
-		}
-		std::cout<<"end pop"<<std::endl;
-        float cmd_array[11] = {cmd_selected->pos[0], cmd_selected->pos[1], cmd_selected->pos[2],
-                               cmd_selected->vel[0], cmd_selected->vel[1], cmd_selected->vel[2],
-                               cmd_selected->acc[0], cmd_selected->acc[1], cmd_selected->acc[2],
-                                cmd_selected->yaw, cmd_selected->w_yaw};
-        if(cmd_distance > 0.6f){
-          approaching = true;
+            else
+            {
+                drone_cmds.pop_front();
+            }
         }
-        if(cmd_distance < 0.2f){
-          approaching = false;
+        std::cout << "end pop" << std::endl;
+        float cmd_array[11] = {
+            cmd_selected->pos[0], cmd_selected->pos[1], cmd_selected->pos[2],
+            cmd_selected->vel[0], cmd_selected->vel[1], cmd_selected->vel[2],
+            cmd_selected->acc[0], cmd_selected->acc[1], cmd_selected->acc[2],
+            cmd_selected->yaw, cmd_selected->w_yaw
+        };
+        if (cmd_distance > 0.6f)
+        {
+            approaching = true;
         }
-        if(approaching){
-         for(int i = 3; i < 9; i++){
-           cmd_array[i] = NAN;
-         }
-         std::cout << "distance to first command is: " << cmd_distance << ", approaching first!"<<std::endl;
+        if (cmd_distance < 0.2f)
+        {
+            approaching = false;
+        }
+        if (approaching)
+        {
+            for (int i = 3; i < 9; i++)
+            {
+                cmd_array[i] = NAN;
+            }
+            std::cout << "distance to first command is: " << cmd_distance << ", approaching first!" << std::endl;
         }
         std_msgs::Float32MultiArray cmd_msg;
-        cmd_msg.data.assign(cmd_array, cmd_array+11);
+        cmd_msg.data.assign(cmd_array, cmd_array + 11);
         cmd_pub.publish(cmd_msg);
-    }else{
+    }
+    else
+    {
         // std::cout <<"cmd num is"<<drone_cmds.size()<<", so not publish cmd" << std::endl;
     }
 }
 
-void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D地图上用于导航
+void project2plane_callback(const ros::TimerEvent&)
+{
+    //将3D位置投影到2D地图上用于导航
     static tf2_ros::TransformBroadcaster br;
     tf2::Quaternion q;
     geometry_msgs::TransformStamped trans;
@@ -159,27 +192,28 @@ void project2plane_callback(const ros::TimerEvent&){    //将3D位置投影到2D
     br.sendTransform(trans);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
     ros::init(argc, argv, "tf_process");
     ros::NodeHandle pnh("~");
     tf2_ros::TransformListener tfListener(tfBuffer);
     ros::Timer timer1 = pnh.createTimer(ros::Duration(0.01), project2plane_callback);
-    ros::Timer timer2 = pnh.createTimer(ros::Duration(0.01), pub_required_cmd);
+    // ros::Timer timer2 = pnh.createTimer(ros::Duration(0.01), pub_required_cmd);
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
     cmd_pub = pnh.advertise<std_msgs::Float32MultiArray>("/exe/cmd", 10);
-    ros::Subscriber rc6_sub =pnh.subscribe("/drone_0_planning/pos_cmd", 10, drone_cmd_callback);
+    ros::Subscriber rc6_sub = pnh.subscribe("/drone_0_planning/pos_cmd", 10, drone_cmd_callback);
     ros::Subscriber pose_sub = pnh.subscribe("/odometry/filtered", 10, poseCallback);
 
-    auto received_drone_cmd = std::make_shared<drone_cmd>();
-    received_drone_cmd->pos[0] = 9999.0;
-    received_drone_cmd->pos[1] = 9999.0;
-    received_drone_cmd->pos[2] = 9999.0;
-    received_drone_cmd->vel[0] = 0;
-    received_drone_cmd->vel[1] = 0;
-    received_drone_cmd->vel[2] = 0;
-    received_drone_cmd->acc[0] = 0;
-    received_drone_cmd->acc[1] = 0;
-    received_drone_cmd->acc[2] = 0;
+    drone_cmd received_drone_cmd;
+    received_drone_cmd.pos[0] = 9999.0;
+    received_drone_cmd.pos[1] = 9999.0;
+    received_drone_cmd.pos[2] = 9999.0;
+    received_drone_cmd.vel[0] = 0;
+    received_drone_cmd.vel[1] = 0;
+    received_drone_cmd.vel[2] = 0;
+    received_drone_cmd.acc[0] = 0;
+    received_drone_cmd.acc[1] = 0;
+    received_drone_cmd.acc[2] = 0;
     drone_cmds.push_back(received_drone_cmd);
 
     ros::spin();
