@@ -26,13 +26,13 @@ quadrotor_msgs::PositionCommand rcv_cmd_msg;
 
 float odom_pos[3];
 
-typedef struct {
+struct drone_cmd{
     float pos[3];
     float vel[3];
     float acc[3];
     float yaw;
     float w_yaw;
-} drone_cmd;
+};
 
 float point_distance(float p1[], float p2[]) {
   float dist = 0;
@@ -42,7 +42,7 @@ float point_distance(float p1[], float p2[]) {
   return sqrt(dist);
 }
 
-std::list<std::shared_ptr<drone_cmd>> drone_cmds;
+std::list<drone_cmd> drone_cmds;
 
 void poseCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     odom_pos[0] = msg->pose.pose.position.x;
@@ -51,41 +51,62 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg) {
 }
 
 void drone_cmd_callback(const quadrotor_msgs::PositionCommandConstPtr& msg){
-    auto received_drone_cmd = std::make_shared<drone_cmd>();
-    received_drone_cmd->pos[0] = msg->position.x;
-    received_drone_cmd->pos[1] = msg->position.y;
-    received_drone_cmd->pos[2] = msg->position.z;
-    received_drone_cmd->vel[0] = msg->velocity.x;
-    received_drone_cmd->vel[1] = msg->velocity.y;
-    received_drone_cmd->vel[2] = msg->velocity.z;
-    received_drone_cmd->acc[0] = msg->acceleration.x;
-    received_drone_cmd->acc[1] = msg->acceleration.y;
-    received_drone_cmd->acc[2] = msg->acceleration.z;
-    received_drone_cmd->yaw = msg->yaw;
-    received_drone_cmd->w_yaw = msg->yaw_dot;
+    drone_cmd received_drone_cmd;
+    received_drone_cmd.pos[0] = msg->position.x;
+    received_drone_cmd.pos[1] = msg->position.y;
+    received_drone_cmd.pos[2] = msg->position.z;
+    received_drone_cmd.vel[0] = msg->velocity.x;
+    received_drone_cmd.vel[1] = msg->velocity.y;
+    received_drone_cmd.vel[2] = msg->velocity.z;
+    received_drone_cmd.acc[0] = msg->acceleration.x;
+    received_drone_cmd.acc[1] = msg->acceleration.y;
+    received_drone_cmd.acc[2] = msg->acceleration.z;
+    received_drone_cmd.yaw = msg->yaw;
+    received_drone_cmd.w_yaw = msg->yaw_dot;
     drone_cmds.push_back(received_drone_cmd);
 }
 
 void pub_required_cmd(const ros::TimerEvent&){
+  	static bool approaching = false;
     if(drone_cmds.size() > 1){
-        auto cmd_first = drone_cmds.begin();
-        auto cmd_second = std::next(cmd_first);
-        auto distance1 = point_distance((*cmd_first)->pos, odom_pos);
-        auto distance2 = point_distance((*cmd_second)->pos, odom_pos);
-        if(distance2 < distance1){
-          drone_cmds.erase(cmd_first);
-          cmd_first = drone_cmds.begin();
-          distance1 = distance2;
+        auto cmd_selected = drone_cmds.begin();
+        auto cmd_iter = std::next(cmd_selected);
+        auto cmd_distance = point_distance(cmd_selected->pos, odom_pos);
+        for(int i = 0; i<150; i++){
+			auto iter_distance = point_distance(cmd_iter->pos, odom_pos);
+            if(iter_distance < cmd_distance){
+          		cmd_selected = cmd_iter;
+          		cmd_distance = iter_distance;
+        	}
+			if(cmd_iter == drone_cmds.end()){
+            	break;
+			}
+            cmd_iter++;
         }
-        float cmd_array[11] = {(*cmd_first)->pos[0], (*cmd_first)->pos[1], (*cmd_first)->pos[2],
-                               (*cmd_first)->vel[0], (*cmd_first)->vel[1], (*cmd_first)->vel[2],
-                               (*cmd_first)->acc[0], (*cmd_first)->acc[1], (*cmd_first)->acc[2],
-                                (*cmd_first)->yaw, (*cmd_first)->w_yaw};
-        if(distance1 > 0.5f){
+		std::cout<<"start pop"<<std::endl;
+		while(1){
+            if(cmd_selected == drone_cmds.begin()){
+             	break;
+            }else{
+              drone_cmds.pop_front();
+            }
+		}
+		std::cout<<"end pop"<<std::endl;
+        float cmd_array[11] = {cmd_selected->pos[0], cmd_selected->pos[1], cmd_selected->pos[2],
+                               cmd_selected->vel[0], cmd_selected->vel[1], cmd_selected->vel[2],
+                               cmd_selected->acc[0], cmd_selected->acc[1], cmd_selected->acc[2],
+                                cmd_selected->yaw, cmd_selected->w_yaw};
+        if(cmd_distance > 0.6f){
+          approaching = true;
+        }
+        if(cmd_distance < 0.2f){
+          approaching = false;
+        }
+        if(approaching){
          for(int i = 3; i < 9; i++){
            cmd_array[i] = NAN;
          }
-         std::cout << "distance to first command is: " << distance1 << ", approaching first!"<<std::endl;
+         std::cout << "distance to first command is: " << cmd_distance << ", approaching first!"<<std::endl;
         }
         std_msgs::Float32MultiArray cmd_msg;
         cmd_msg.data.assign(cmd_array, cmd_array+11);

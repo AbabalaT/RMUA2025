@@ -70,6 +70,7 @@ void polyTrajCallback(traj_utils::PolyTrajPtr msg)
   traj_id_ = msg->traj_id;
 
   receive_traj_ = true;
+  std::cout<<"recv traj"<<std::endl;
 }
 
 std::pair<double, double> calculate_yaw(double t_cur, Eigen::Vector3d &pos, double dt)
@@ -173,13 +174,13 @@ void cmdCallback(const ros::TimerEvent &e)
 
   ros::Time time_now = ros::Time::now();
 
-  if ((time_now - heartbeat_time_).toSec() > 0.5)
-  {
-    ROS_ERROR("[traj_server] Lost heartbeat from the planner, is it dead?");
-
-    receive_traj_ = false;
-    publish_cmd(last_pos_, Vector3d::Zero(), Vector3d::Zero(), Vector3d::Zero(), last_yaw_, 0);
-  }
+//  if ((time_now - heartbeat_time_).toSec() > 0.5)
+//  {
+//    ROS_ERROR("[traj_server] Lost heartbeat from the planner, is it dead?");
+//
+//    receive_traj_ = false;
+//    publish_cmd(last_pos_, Vector3d::Zero(), Vector3d::Zero(), Vector3d::Zero(), last_yaw_, 0);
+//  }
 
   double t_cur = (time_now - start_time_).toSec();
 

@@ -85,7 +85,7 @@ namespace ego_planner
     exec_timer_.stop(); // To avoid blockage
     std_msgs::Empty heartbeat_msg;
     heartbeat_pub_.publish(heartbeat_msg);
-
+//	std::cout<<"heart_beat!"<<std::endl;
     static int fsm_num = 0;
     fsm_num++;
     if (fsm_num == 500)

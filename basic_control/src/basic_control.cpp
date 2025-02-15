@@ -176,27 +176,27 @@ void pid_init(void)
 	angle_pid_mat[2][2] = 0.0f;
 
 	velocity_pid_mat[1][0] = 0.0;
-	velocity_pid_mat[1][1] = 0.018f;
-	velocity_pid_mat[1][2] = 0.24;
-	velocity_pid_mat[1][3] = 0.032;
+	velocity_pid_mat[1][1] = 0.024f;
+	velocity_pid_mat[1][2] = 0.01;
+	velocity_pid_mat[1][3] = 0.12;
 
 	velocity_pid_mat[2][0] = 0.0;
-	velocity_pid_mat[2][1] = 0.03f;
-	velocity_pid_mat[2][2] = 0.26f;
-	velocity_pid_mat[2][3] = 0.003f;
+	velocity_pid_mat[2][1] = 0.024f;
+	velocity_pid_mat[2][2] = 0.01f;
+	velocity_pid_mat[2][3] = 0.012f;
 
 	pos_pid_mat[0][0] = 0.0;
-	pos_pid_mat[0][1] = 1.4;
+	pos_pid_mat[0][1] = 1.8;
 	pos_pid_mat[0][2] = 0.0;
 	pos_pid_mat[0][3] = 0.2;
 
 	pos_pid_mat[1][0] = 0.0;
-	pos_pid_mat[1][1] = 1.4;
+	pos_pid_mat[1][1] = 1.8;
 	pos_pid_mat[1][2] = 0.0;
 	pos_pid_mat[1][3] = 0.2;
 
 	pos_pid_mat[2][0] = 0.0;
-	pos_pid_mat[2][1] = 1.6;
+	pos_pid_mat[2][1] = 1.8;
 	pos_pid_mat[2][2] = 0.0;
 	pos_pid_mat[2][3] = 0.2;
 
@@ -778,8 +778,9 @@ float pid_pos_x(float target, float real)
 	d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
 	d_out_1 = d_out;
 
-	result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (error + pos_pid_mat[0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
-	
+//	result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (error + pos_pid_mat[0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
+	result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
+
 	if(result > 15.0f){
 		result = 15.0f;
 	}
@@ -852,7 +853,7 @@ float pid_pos_y(float target, float real)
 	d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
 	d_out_1 = d_out;
 
-	result = pos_pid_mat[1][0] * target + pos_pid_mat[1][1] * (error + pos_pid_mat[1][2] * sum * 0.01 + pos_pid_mat[1][3] * d_out / 0.01);
+	result = pos_pid_mat[1][0] * target + pos_pid_mat[1][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[1][2] * sum * 0.01 + pos_pid_mat[1][3] * d_out / 0.01);
 	
 	if(result > 15.0f){
 		result = 15.0f;
@@ -926,7 +927,7 @@ float pid_pos_z(float target, float real)
 	d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
 	d_out_1 = d_out;
 
-	result = pos_pid_mat[2][0] * target + pos_pid_mat[2][1] * (error + pos_pid_mat[2][2] * sum * 0.01 + pos_pid_mat[2][3] * d_out / 0.01);
+	result = pos_pid_mat[2][0] * target + pos_pid_mat[2][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[2][2] * sum * 0.01 + pos_pid_mat[2][3] * d_out / 0.01);
 	
 	if(result > 15.0f){
 		result = 15.0f;
@@ -1408,9 +1409,16 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr &msg)
 		}else{
 			target_w_yaw = 0.0;
 		}
-		if(!isnan(tf_cmd[10])){
-			target_w_yaw += tf_cmd[10];
+        if(target_w_yaw > 1.6){
+        	target_w_yaw = 1.6;
+        }
+
+		if(target_w_yaw < -1.6){
+			target_w_yaw = -1.6;
 		}
+//		if(!isnan(tf_cmd[10])){
+//			target_w_yaw += tf_cmd[10];
+//		}
 	}
 
 	//	float target_mag_vel = mag_vector(world_target_vel);
