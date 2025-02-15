@@ -1,6 +1,6 @@
 <launch>
-    <arg name="map_size_x" value="1300.0"/>
-    <arg name="map_size_y" value="1300.0"/>
+    <arg name="map_size_x" value="1500.0"/>
+    <arg name="map_size_y" value="1500.0"/>
     <arg name="map_size_z" value="200.0"/>
     <arg name="odom_topic" value="visual_slam/odom" />
 
@@ -13,8 +13,6 @@
         <arg name="map_size_y" value="$(arg map_size_y)"/>
         <arg name="map_size_z" value="$(arg map_size_z)"/>
         <arg name="odom_topic" value="$(arg odom_topic)"/>
-
-<!--         <arg name="flight_type" value="1"/> -->
 
         <arg name="flight_type" value="1"/>
         <arg name="point_num" default="4"/>
