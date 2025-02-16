@@ -1437,21 +1437,21 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     rate_msg.data = world_target_vel[2];
     rate_z_target_publisher.publish(rate_msg);
 
-    // if (rc_mode == -1)
-    // {
-    //     if (!isnan(tf_cmd[6]))
-    //     {
-    //         if (!isnan(tf_cmd[7]))
-    //         {
-    //             if (!isnan(tf_cmd[8]))
-    //             {
-    //                 world_force[0] += tf_cmd[6] * 0.9 / 49.03; //12:all max thrust
-    //                 world_force[1] += tf_cmd[7] * 0.9 / 49.03;
-    //                 world_force[2] += tf_cmd[8] * 0.9 / 49.03;
-    //             }
-    //         }
-    //     }
-    // }
+    if (rc_mode == -1)
+    {
+        if (!isnan(tf_cmd[6]))
+        {
+            if (!isnan(tf_cmd[7]))
+            {
+                if (!isnan(tf_cmd[8]))
+                {
+                    world_force[0] += tf_cmd[6] * 0.45 / 49.03; //12:all max thrust
+                    world_force[1] += tf_cmd[7] * 0.45 / 49.03;
+                    world_force[2] += tf_cmd[8] * 0.45 / 49.03;
+                }
+            }
+        }
+    }
 
     if (rc_mode == -1)
     {
