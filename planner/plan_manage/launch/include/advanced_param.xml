@@ -50,7 +50,7 @@
         <remap from="~grid_map/depth" to = "/drone_$(arg drone_id)_$(arg depth_topic)"/>
         <!-- planning fsm -->
         <param name="fsm/flight_type" value="$(arg flight_type)" type="int"/>
-        <param name="fsm/thresh_replan_time" value="1.0" type="double"/>
+        <param name="fsm/thresh_replan_time" value="0.3" type="double"/>
         <param name="fsm/planning_horizon" value="$(arg planning_horizon)" type="double"/>
         <!--always set to 1.5 times grater than sensing horizen-->
         <param name="fsm/emergency_time" value="1.0" type="double"/>
@@ -105,9 +105,9 @@
         <param name="grid_map/p_max" value="0.90"/>
         <param name="grid_map/p_occ" value="0.80"/>
         <param name="grid_map/fading_time" value="1000.0"/>
-        <param name="grid_map/min_ray_length" value="0.1"/>
+        <param name="grid_map/min_ray_length" value="0.3"/>
         <param name="grid_map/max_ray_length" value="45.0"/>
-        <param name="grid_map/visualization_truncate_height" value="20.0"/>
+        <param name="grid_map/visualization_truncate_height" value="30.0"/>
         <param name="grid_map/show_occ_time" value="false"/>
         <param name="grid_map/pose_type" value="1"/>
         <param name="grid_map/frame_id" value="world"/>

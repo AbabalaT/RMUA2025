@@ -177,7 +177,7 @@ Panels:
         - /drone411/Mapping1/map inflate1
         - /MovingObstaclesJoystick01/PredictedTrajectories1
       Splitter Ratio: 0.4771505296230316
-    Tree Height: 407
+    Tree Height: 441
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -370,8 +370,8 @@ Visualization Manager:
             - Alpha: 1
               Autocompute Intensity Bounds: true
               Autocompute Value Bounds:
-                Max Value: 51.625
-                Min Value: 14.875
+                Max Value: 37.875
+                Min Value: 29.875
                 Value: true
               Axis: Z
               Channel Name: intensity
@@ -5961,7 +5961,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 23.323169708251953
+      Distance: 43.440860748291016
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -5969,8 +5969,8 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 6.357510566711426
-        Y: -0.16660499572753906
+        X: 0.5260686874389648
+        Y: 0.18403244018554688
         Z: -3.337860107421875e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
@@ -5979,7 +5979,7 @@ Visualization Manager:
       Near Clip Distance: 0.009999999776482582
       Pitch: 0.3153988718986511
       Target Frame: base_link
-      Yaw: 3.56540846824646
+      Yaw: 3.570408582687378
     Saved:
       - Class: rviz/FPS
         Enable Stereo Rendering:

@@ -20,9 +20,89 @@ ros::Time imu_stamp;
 tf2_ros::Buffer tfBuffer;
 
 ros::Publisher lio_pub;
+ros::Publisher pcl_pose_pub;
 ros::Publisher cmd_pub;
 
 quadrotor_msgs::PositionCommand rcv_cmd_msg;
+
+typedef struct
+{
+    float w, x, y, z;
+} Quaternion;
+
+float mahony_quaternion[4];
+
+Quaternion multiply_quaternion(Quaternion* q1, Quaternion* q2)
+{
+    Quaternion result;
+    if (q1->w < 0.0f)
+    {
+        q1->w = -1.0f * q1->w;
+        q1->x = -1.0f * q1->x;
+        q1->y = -1.0f * q1->y;
+        q1->z = -1.0f * q1->z;
+    }
+    if (q2->w < 0.0f)
+    {
+        q2->w = -1.0f * q2->w;
+        q2->x = -1.0f * q2->x;
+        q2->y = -1.0f * q2->y;
+        q2->z = -1.0f * q2->z;
+    }
+    result.w = q1->w * q2->w - q1->x * q2->x - q1->y * q2->y - q1->z * q2->z;
+    result.x = q1->w * q2->x + q1->x * q2->w + q1->y * q2->z - q1->z * q2->y;
+    result.y = q1->w * q2->y - q1->x * q2->z + q1->y * q2->w + q1->z * q2->x;
+    result.z = q1->w * q2->z + q1->x * q2->y - q1->y * q2->x + q1->z * q2->w;
+    if (result.w < 0.0f)
+    {
+        result.w = -result.w;
+        result.x = -result.x;
+        result.y = -result.y;
+        result.z = -result.z;
+    }
+    return result;
+}
+
+Quaternion quaternion_conjugate(Quaternion q)
+{
+    Quaternion result = {q.w, -q.x, -q.y, -q.z};
+    return result;
+}
+
+// Function to rotate a vector by a quaternion
+void rotateVectorByQuaternion(Quaternion q, float v[3], float result[3])
+{
+    // Convert the vector into a quaternion with w = 0
+    Quaternion q_vec = {0.0f, v[0], v[1], v[2]};
+
+    // Calculate the conjugate of the quaternion
+    Quaternion q_conj = quaternion_conjugate(q);
+
+    // Perform the rotation: q * v * q^-1
+    Quaternion temp = multiply_quaternion(&q, &q_vec); // q * v
+    Quaternion q_result = multiply_quaternion(&temp, &q_conj); // (q * v) * q^-1
+
+    // The result quaternion's x, y, z are the rotated vector components
+    result[0] = q_result.x;
+    result[1] = q_result.y;
+    result[2] = q_result.z;
+}
+
+Quaternion init_quat;
+Quaternion world_quat;
+Quaternion world_quat_no_rotation;
+
+Quaternion body_axis_z(Quaternion measure, float theta)
+{
+    Quaternion rotation;
+    rotation.w = cos(theta / 2.0f);
+    rotation.x = sin(theta / 2.0f);
+    rotation.y = 0.0f;
+    rotation.z = 0.0f;
+
+    Quaternion result = multiply_quaternion(&measure, &rotation);
+    return result;
+}
 
 float odom_pos[3];
 
@@ -54,8 +134,32 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     odom_pos[2] = msg->pose.pose.position.z;
     nav_msgs::Odometry new_msg = *msg;
     new_msg.header.stamp = ros::Time::now();
+    new_msg.header.frame_id = "world";
+    // new_msg.child_frame_id = "base_link";
     new_msg.pose.pose.position.x = new_msg.pose.pose.position.x - 750.0;
     lio_pub.publish(new_msg);
+    new_msg.child_frame_id = "body";
+
+    // new_msg.pose.pose.orientation.x = msg->pose.pose.orientation.y;
+    // new_msg.pose.pose.orientation.y = msg->pose.pose.orientation.x;
+    // new_msg.pose.pose.orientation.z = -msg->pose.pose.orientation.z;
+    // new_msg.pose.pose.orientation.w = msg->pose.pose.orientation.w;
+
+    Quaternion q_measure;
+
+    q_measure.w = msg->pose.pose.orientation.w;
+    q_measure.x = msg->pose.pose.orientation.x;
+    q_measure.y = msg->pose.pose.orientation.y;
+    q_measure.z = msg->pose.pose.orientation.z;
+
+    Quaternion q_measured = body_axis_z(q_measure, 3.14159265358);
+
+    new_msg.pose.pose.orientation.x = q_measured.x;
+    new_msg.pose.pose.orientation.y = q_measured.y;
+    new_msg.pose.pose.orientation.z = q_measured.z;
+    new_msg.pose.pose.orientation.w = q_measured.w;
+
+    pcl_pose_pub.publish(new_msg);
 }
 
 void drone_cmd_callback(const quadrotor_msgs::PositionCommandConstPtr& msg)
@@ -204,6 +308,7 @@ int main(int argc, char** argv)
     ros::Timer timer1 = pnh.createTimer(ros::Duration(0.01), project2plane_callback);
     // ros::Timer timer2 = pnh.createTimer(ros::Duration(0.01), pub_required_cmd);
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
+    pcl_pose_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/pcl_pose", 10);
     cmd_pub = pnh.advertise<std_msgs::Float32MultiArray>("/exe/cmd", 10);
     ros::Subscriber rc6_sub = pnh.subscribe("/drone_0_planning/pos_cmd", 10, drone_cmd_callback);
     ros::Subscriber pose_sub = pnh.subscribe("/odometry/filtered", 10, poseCallback);
@@ -218,7 +323,7 @@ int main(int argc, char** argv)
     received_drone_cmd.acc[0] = 0;
     received_drone_cmd.acc[1] = 0;
     received_drone_cmd.acc[2] = 0;
-    drone_cmds.push_back(received_drone_cmd);
+    // drone_cmds.push_back(received_drone_cmd);
 
     ros::spin();
     return 0;

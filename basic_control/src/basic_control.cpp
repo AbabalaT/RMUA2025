@@ -187,19 +187,19 @@ void pid_init(void)
     velocity_pid_mat[2][3] = 0.012f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 1.8;
+    pos_pid_mat[0][1] = 1.2;
     pos_pid_mat[0][2] = 0.0;
-    pos_pid_mat[0][3] = 0.2;
+    pos_pid_mat[0][3] = 0.38;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 1.8;
+    pos_pid_mat[1][1] = 1.2;
     pos_pid_mat[1][2] = 0.0;
-    pos_pid_mat[1][3] = 0.2;
+    pos_pid_mat[1][3] = 0.38;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 1.8;
+    pos_pid_mat[2][1] = 1.2;
     pos_pid_mat[2][2] = 0.0;
-    pos_pid_mat[2][3] = 0.2;
+    pos_pid_mat[2][3] = 0.38;
 
     pos_pid_mat[3][0] = 0.0;
     pos_pid_mat[3][1] = 6.0;
@@ -782,9 +782,9 @@ float pid_pos_x(float target, float real)
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    //	result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (error + pos_pid_mat[0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
-    result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[
-        0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
+    result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (error + pos_pid_mat[0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
+    // result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[
+    //     0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
 
     if (result > 15.0f)
     {
@@ -860,7 +860,7 @@ float pid_pos_y(float target, float real)
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = pos_pid_mat[1][0] * target + pos_pid_mat[1][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[
+    result = pos_pid_mat[1][0] * target + pos_pid_mat[1][1] * (error + pos_pid_mat[
         1][2] * sum * 0.01 + pos_pid_mat[1][3] * d_out / 0.01);
 
     if (result > 15.0f)
@@ -937,7 +937,7 @@ float pid_pos_z(float target, float real)
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = pos_pid_mat[2][0] * target + pos_pid_mat[2][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[
+    result = pos_pid_mat[2][0] * target + pos_pid_mat[2][1] * (error + pos_pid_mat[
         2][2] * sum * 0.01 + pos_pid_mat[2][3] * d_out / 0.01);
 
     if (result > 15.0f)

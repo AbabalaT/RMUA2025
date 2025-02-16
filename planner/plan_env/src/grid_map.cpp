@@ -339,6 +339,7 @@ void GridMap::odomCallback(const nav_msgs::OdometryConstPtr &odom)
 void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
 {
   /* Note: no obstalce elimination in this function! */
+  // std::cout<<"recv cloud!"<<std::endl;
   if (!md_.has_odom_)
   {
     std::cout << "grid_map: no odom!" << std::endl;
