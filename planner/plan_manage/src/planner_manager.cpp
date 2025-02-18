@@ -453,7 +453,7 @@ namespace ego_planner
 
     globalMJO.reset(headState, tailState, waypoints.size());
 
-    double des_vel = pp_.max_vel_ / 1.5;
+    double des_vel = pp_.max_vel_ / 1.1;
     Eigen::VectorXd time_vec(waypoints.size());
 
     for (int j = 0; j < 2; ++j)
@@ -482,7 +482,7 @@ namespace ego_planner
              << tailState << endl;
       }
 
-      des_vel /= 1.5;
+      des_vel /= 1.2;
     }
 
     auto time_now = ros::Time::now();

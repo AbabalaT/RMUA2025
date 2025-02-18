@@ -187,19 +187,19 @@ void pid_init(void)
     velocity_pid_mat[2][3] = 0.012f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 1.3;
-    pos_pid_mat[0][2] = 1.2;
-    pos_pid_mat[0][3] = 0.54;
+    pos_pid_mat[0][1] = 1.25;
+    pos_pid_mat[0][2] = 1.0;
+    pos_pid_mat[0][3] = 0.45;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 1.3;
-    pos_pid_mat[1][2] = 1.2;
-    pos_pid_mat[1][3] = 0.54;
+    pos_pid_mat[1][1] = 1.25;
+    pos_pid_mat[1][2] = 1.0;
+    pos_pid_mat[1][3] = 0.45;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 1.3;
-    pos_pid_mat[2][2] = 1.2;
-    pos_pid_mat[2][3] = 0.54;
+    pos_pid_mat[2][1] = 1.28;
+    pos_pid_mat[2][2] = 1.0;
+    pos_pid_mat[2][3] = 0.45;
 
     pos_pid_mat[3][0] = 0.0;
     pos_pid_mat[3][1] = 6.0;
@@ -1630,29 +1630,23 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     target_velocity_pitch = -pid_angle_pitch(error_body[1], dt) - w_yaw_body[1];
     target_velocity_yaw = pid_angle_yaw(error_body[2], dt) + w_yaw_body[2];
 
-    if (target_velocity_pitch > 10.0f)
-    {
-        target_velocity_pitch = 10.0f;
+    if(target_velocity_roll > 3.8){
+        target_velocity_roll = 3.8;
     }
-    if (target_velocity_pitch < -10.0f)
-    {
-        target_velocity_pitch = -10.0f;
+    if(target_velocity_roll < -3.8){
+        target_velocity_roll = -3.8;
     }
-    if (target_velocity_roll > 10.0f)
-    {
-        target_velocity_roll = 10.0f;
+    if(target_velocity_pitch > 3.8){
+        target_velocity_pitch = 3.8;
     }
-    if (target_velocity_roll < -10.0f)
-    {
-        target_velocity_roll = -10.0f;
+    if(target_velocity_pitch < -3.8){
+        target_velocity_pitch = -3.8;
     }
-    if (target_velocity_yaw > 10.0f)
-    {
-        target_velocity_yaw = 10.0f;
+    if(target_velocity_yaw > 3.8){
+        target_velocity_yaw = 3.8;
     }
-    if (target_velocity_yaw < -10.0f)
-    {
-        target_velocity_yaw = -10.0f;
+    if(target_velocity_yaw < -3.8){
+        target_velocity_yaw = -3.8;
     }
 
     gyro_data[0] = msg->angular_velocity.x;
