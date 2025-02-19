@@ -188,17 +188,17 @@ void pid_init(void)
 
     pos_pid_mat[0][0] = 0.0;
     pos_pid_mat[0][1] = 1.25;
-    pos_pid_mat[0][2] = 1.0;
+    pos_pid_mat[0][2] = 1.4;
     pos_pid_mat[0][3] = 0.45;
 
     pos_pid_mat[1][0] = 0.0;
     pos_pid_mat[1][1] = 1.25;
-    pos_pid_mat[1][2] = 1.0;
+    pos_pid_mat[1][2] = 1.4;
     pos_pid_mat[1][3] = 0.45;
 
     pos_pid_mat[2][0] = 0.0;
     pos_pid_mat[2][1] = 1.28;
-    pos_pid_mat[2][2] = 1.0;
+    pos_pid_mat[2][2] = 1.4;
     pos_pid_mat[2][3] = 0.45;
 
     pos_pid_mat[3][0] = 0.0;
