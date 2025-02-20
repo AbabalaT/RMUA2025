@@ -22,6 +22,7 @@ float target_world_pos[4];
 float measure_world_pos[4];
 
 float tf_cmd[11];
+float no_g_acc[3];
 
 int init_waiting = 60;
 
@@ -183,6 +184,66 @@ void pid_init(void)
 
     velocity_pid_mat[2][0] = 0.0;
     velocity_pid_mat[2][1] = 0.024f;
+    velocity_pid_mat[2][2] = 0.01f;
+    velocity_pid_mat[2][3] = 0.012f;
+
+    pos_pid_mat[0][0] = 0.0;
+    pos_pid_mat[0][1] = 1.25;
+    pos_pid_mat[0][2] = 1.4;
+    pos_pid_mat[0][3] = 0.45;
+
+    pos_pid_mat[1][0] = 0.0;
+    pos_pid_mat[1][1] = 1.25;
+    pos_pid_mat[1][2] = 1.4;
+    pos_pid_mat[1][3] = 0.45;
+
+    pos_pid_mat[2][0] = 0.0;
+    pos_pid_mat[2][1] = 1.28;
+    pos_pid_mat[2][2] = 1.4;
+    pos_pid_mat[2][3] = 0.45;
+
+    pos_pid_mat[3][0] = 0.0;
+    pos_pid_mat[3][1] = 6.0;
+    pos_pid_mat[3][2] = 0.0;
+    pos_pid_mat[3][3] = 0.0;
+}
+
+void pid_weak(void)
+{
+    mat_pid[0][0] = 0.0;
+    mat_pid[0][1] = 30.0;
+    mat_pid[0][2] = 0.0;
+    mat_pid[0][3] = 0.00;
+
+    mat_pid[1][0] = 0.0;
+    mat_pid[1][1] = 30.0f;
+    mat_pid[1][2] = 0.0;
+    mat_pid[1][3] = 0.00;
+
+    mat_pid[2][0] = 0.0;
+    mat_pid[2][1] = 360.0f;
+    mat_pid[2][2] = 0.0f;
+    mat_pid[2][3] = 0.0;
+
+    angle_pid_mat[0][0] = 4.2;
+    angle_pid_mat[0][1] = 0.0f;
+    angle_pid_mat[0][2] = 0.0f;
+
+    angle_pid_mat[1][0] = 4.2;
+    angle_pid_mat[1][1] = 0.0f;
+    angle_pid_mat[1][2] = 0.0f;
+
+    angle_pid_mat[2][0] = 4.2;
+    angle_pid_mat[2][1] = 0.0f;
+    angle_pid_mat[2][2] = 0.0f;
+
+    velocity_pid_mat[1][0] = 0.0;
+    velocity_pid_mat[1][1] = 0.072f;
+    velocity_pid_mat[1][2] = 0.01;
+    velocity_pid_mat[1][3] = 0.12;
+
+    velocity_pid_mat[2][0] = 0.0;
+    velocity_pid_mat[2][1] = 0.072f;
     velocity_pid_mat[2][2] = 0.01f;
     velocity_pid_mat[2][3] = 0.012f;
 
@@ -1248,6 +1309,10 @@ BasicControl::BasicControl(ros::NodeHandle* nh)
                                                               std::bind(&BasicControl::tf_cmd_callback, this,
                                                                         std::placeholders::_1));
 
+    no_g_acc_suber = nh->subscribe<std_msgs::Float32MultiArray>("/exe/output_acc", 1,
+                                                              std::bind(&BasicControl::no_g_acc_callback, this,
+                                                                        std::placeholders::_1));
+
     rate_x_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_x", 10);
     rate_y_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_y", 10);
     rate_z_target_publisher = nh->advertise<std_msgs::Float32>("/custom_debug/target_rate_z", 10);
@@ -1424,18 +1489,19 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     world_force[2] = pid_vz(world_target_vel[2], world_measure_vel[2]);
 
     std_msgs::Float32 rate_msg;
-    rate_msg.data = world_measure_vel[0];
-    rate_x_real_publisher.publish(rate_msg);
-    rate_msg.data = world_target_vel[0];
-    rate_x_target_publisher.publish(rate_msg);
-    rate_msg.data = world_measure_vel[1];
-    rate_y_real_publisher.publish(rate_msg);
-    rate_msg.data = world_target_vel[1];
-    rate_y_target_publisher.publish(rate_msg);
-    rate_msg.data = world_measure_vel[2];
-    rate_z_real_publisher.publish(rate_msg);
-    rate_msg.data = world_target_vel[2];
-    rate_z_target_publisher.publish(rate_msg);
+
+    // rate_msg.data = world_measure_vel[0];
+    // rate_x_real_publisher.publish(rate_msg);
+    // rate_msg.data = world_target_vel[0];
+    // rate_x_target_publisher.publish(rate_msg);
+    // rate_msg.data = world_measure_vel[1];
+    // rate_y_real_publisher.publish(rate_msg);
+    // rate_msg.data = world_target_vel[1];
+    // rate_y_target_publisher.publish(rate_msg);
+    // rate_msg.data = world_measure_vel[2];
+    // rate_z_real_publisher.publish(rate_msg);
+    // rate_msg.data = world_target_vel[2];
+    // rate_z_target_publisher.publish(rate_msg);
 
     if (rc_mode == -1)
     {
@@ -1569,6 +1635,11 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     measure_quaternion.x = msg->orientation.x;
     measure_quaternion.y = msg->orientation.y;
     measure_quaternion.z = msg->orientation.z;
+
+    no_g_acc[0] = msg->linear_acceleration.x;
+    no_g_acc[1] = msg->linear_acceleration.y;
+    no_g_acc[2] = msg->linear_acceleration.z;
+
     float measure_yaw = 0.0f;
     measure_yaw = atan2(
         2.0 * (measure_quaternion.w * measure_quaternion.z + measure_quaternion.x * measure_quaternion.y),
@@ -1658,7 +1729,14 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
         target_velocity_roll = rc_channel[0] * 0.004;
         target_velocity_pitch = rc_channel[1] * 0.004;
         target_velocity_yaw = rc_channel[3] * -0.004;
-        throttle_set = (rc_channel[2] / 2.0 + 500.0) / 2000.0;
+        if (rc_channel[4] > 100)
+        {
+            throttle_set = (rc_channel[2] / 2.0 + 500.0) / 1000.0;
+        }
+        else
+        {
+            throttle_set = (rc_channel[2] / 2.0 + 500.0) / 2000.0;
+        }
     }
 
     imu_roll = gyro_data[0];
@@ -1771,6 +1849,51 @@ void BasicControl::tf_cmd_callback(const std_msgs::Float32MultiArray::ConstPtr& 
             tf_cmd[i] = msg->data[i];
         }
     }
+}
+
+void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{
+    // no_g_acc[0] = msg->data[0];
+    // no_g_acc[1] = msg->data[1];
+    // no_g_acc[2] = msg->data[2];
+
+    float total_u = pwm_cmd.rotorPWM0 + pwm_cmd.rotorPWM1 + pwm_cmd.rotorPWM2 + pwm_cmd.rotorPWM3;
+    float k = total_u / (no_g_acc[0] * no_g_acc[0] + no_g_acc[1] * no_g_acc[1] + no_g_acc[2] * no_g_acc[2]);
+
+    static bool pre_state;
+    static bool weak_power_state;
+
+    std_msgs::Float32 rate_msg;
+    rate_msg.data = k;
+    rate_z_target_publisher.publish(rate_msg);
+    if(weak_power_state){
+        if(total_u < 1.6){
+            weak_power_state = (k>0.032);
+        }else{
+            weak_power_state = (k>0.024);
+        }
+    }else{
+        if(total_u > 0.6){
+            weak_power_state = (k>0.012);
+        }else{
+            weak_power_state = (k>0.032);
+        }
+    }
+    
+    if(weak_power_state){
+        std::cout<<"weak mode"<<std::endl;
+    }
+
+    if(weak_power_state != pre_state){
+        if(weak_power_state){
+            pid_weak();
+            hover_throttle = 0.715;
+        }else{
+            pid_init();
+            hover_throttle = 0.18;
+        }
+    }
+    pre_state = weak_power_state;
 }
 
 void BasicControl::rviz_clicked_point_callback(const geometry_msgs::PoseStamped::ConstPtr& msg)

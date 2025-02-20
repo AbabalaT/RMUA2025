@@ -39,6 +39,7 @@ private:
 	ros::Subscriber pose_suber;
 
     ros::Subscriber tf_cmd_suber;
+	ros::Subscriber no_g_acc_suber;
 
     ros::Publisher pwm_publisher;
 
@@ -64,6 +65,7 @@ private:
 	void pwm_send_callback(const ros::TimerEvent& event);
 
     void tf_cmd_callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
+	void no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
 
     void rviz_clicked_point_callback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 

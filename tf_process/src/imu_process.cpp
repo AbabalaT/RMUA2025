@@ -10,8 +10,8 @@
 
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/Imu.h>
 
 #include <geometry_msgs/TransformStamped.h>
@@ -23,8 +23,6 @@
 #include <tf2_ros/transform_broadcaster.h>
 
 #include <std_msgs/Float32.h>
-
-#include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
 
 #include <pcl/io/pcd_io.h>
@@ -32,6 +30,8 @@
 #include <pcl/point_cloud.h>
 
 #include "MahonyAHRS.hpp"
+
+#include <std_msgs/Float32MultiArray.h>
 
 tf2::Quaternion ned2enu_quat;
 
@@ -57,6 +57,7 @@ ros::Publisher real_map_pub;
 ros::Publisher pcl_pub;
 ros::Publisher ahrs_pub;
 ros::Publisher uwb_map_pub;
+ros::Publisher acc_pub;
 
 std::ofstream outFile;
 
@@ -220,9 +221,9 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     new_point.y = odom_msg.pose.pose.position.y;
     new_point.z = odom_msg.pose.pose.position.z;
     // route_cloud->points.push_back(new_point);
-    if(rc_channel[5] < -100){
-      outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
-    }
+    // if(rc_channel[5] < -100){
+    //   outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
+    // }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -385,6 +386,12 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     imu_now_pub.publish(new_msg);
     Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
     world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
+    float acc_array[3] = {
+        static_cast<float>(new_msg.linear_acceleration.x), static_cast<float>(new_msg.linear_acceleration.y), static_cast<float>(new_msg.linear_acceleration.z)
+    };
+    std_msgs::Float32MultiArray acc_msg;
+    acc_msg.data.assign(acc_array, acc_array + 3);
+    acc_pub.publish(acc_msg);
 }
 
 void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -393,6 +400,11 @@ void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     new_msg.header.stamp = ros::Time::now();
     //    new_msg.header.frame_id = "body";
     pcl_pub.publish(new_msg);
+}
+
+void rviz_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg) {
+    ROS_INFO("Clicked point: [%f, %f, %f]", msg->point.x, msg->point.y, msg->point.z);
+    outFile << msg->point.x << ", " << msg->point.y << ", " << msg->point.z << std::endl;
 }
 
 void project2plane_callback(const ros::TimerEvent&)
@@ -456,7 +468,7 @@ int main(int argc, char** argv)
     ros::Subscriber debug_pose = pnh.subscribe("/airsim_node/drone_1/debug/pose_gt", 10, RealPoseCallback);
     //ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
     ros::Subscriber init_sub = pnh.subscribe("/airsim_node/initial_pose", 10, InitialPoseCallback);
-
+    ros::Subscriber rviz_point_sub = pnh.subscribe("/clicked_point", 10, rviz_point_callback);
     ros::Subscriber rc6_sub = pnh.subscribe("/custom_debug/rc6", 10, channel6_callback);
 
     imu_now_pub = pnh.advertise<sensor_msgs::Imu>("/ekf/imu_now", 10);
@@ -467,6 +479,7 @@ int main(int argc, char** argv)
     lio_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/lio", 10);
     ahrs_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/ahrs", 10);
     uwb_map_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb2", 10);
+    acc_pub = pnh.advertise<std_msgs::Float32MultiArray>("/exe/output_acc", 10);
 
     mahony_quaternion[0] = 1.0;
     mahony_quaternion[1] = 0.0;
