@@ -8,7 +8,6 @@ Panels:
         - /drone01
         - /drone01/Planning1
         - /drone01/Planning1/drone_path1/Offset1
-        - /drone01/Mapping1
         - /drone01/Mapping1/PointCloud21
         - /drone01/Simulation1/depth1
         - /drone11/Mapping1/map inflate1
@@ -177,6 +176,7 @@ Panels:
         - /drone411/Mapping1/map inflate1
         - /MovingObstaclesJoystick01/PredictedTrajectories1
         - /Path1
+        - /PointCloud21
       Splitter Ratio: 0.4771505296230316
     Tree Height: 407
   - Class: rviz/Selection
@@ -285,7 +285,7 @@ Visualization Manager:
               Marker Topic: /drone_0_ego_planner_node/optimal_list
               Name: optimal_traj
               Namespaces:
-                "": true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/Marker
@@ -5956,6 +5956,34 @@ Visualization Manager:
       Topic: /exe/path
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 138.1598358154297
+        Min Value: 132.71875
+        Value: true
+      Axis: Z
+      Channel Name: z
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.25
+      Style: Boxes
+      Topic: /cloud_livox_obs
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -5986,7 +6014,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 19.786869049072266
+      Distance: 23.98662567138672
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -5994,17 +6022,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 5.842635154724121
-        Y: 0.3809981346130371
-        Z: -3.337860107421875e-06
+        X: 0
+        Y: 0
+        Z: 0
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4797983169555664
+      Pitch: 0.14539867639541626
       Target Frame: base_link
-      Yaw: 3.0786356925964355
+      Yaw: 3.005399465560913
     Saved:
       - Class: rviz/FPS
         Enable Stereo Rendering:

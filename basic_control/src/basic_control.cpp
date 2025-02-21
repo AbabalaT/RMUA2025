@@ -1490,18 +1490,18 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
     std_msgs::Float32 rate_msg;
 
-    // rate_msg.data = world_measure_vel[0];
-    // rate_x_real_publisher.publish(rate_msg);
-    // rate_msg.data = world_target_vel[0];
-    // rate_x_target_publisher.publish(rate_msg);
-    // rate_msg.data = world_measure_vel[1];
-    // rate_y_real_publisher.publish(rate_msg);
-    // rate_msg.data = world_target_vel[1];
-    // rate_y_target_publisher.publish(rate_msg);
-    // rate_msg.data = world_measure_vel[2];
-    // rate_z_real_publisher.publish(rate_msg);
-    // rate_msg.data = world_target_vel[2];
-    // rate_z_target_publisher.publish(rate_msg);
+    rate_msg.data = world_measure_vel[0];
+    rate_x_real_publisher.publish(rate_msg);
+    rate_msg.data = world_target_vel[0];
+    rate_x_target_publisher.publish(rate_msg);
+    rate_msg.data = world_measure_vel[1];
+    rate_y_real_publisher.publish(rate_msg);
+    rate_msg.data = world_target_vel[1];
+    rate_y_target_publisher.publish(rate_msg);
+    rate_msg.data = world_measure_vel[2];
+    rate_z_real_publisher.publish(rate_msg);
+    rate_msg.data = world_target_vel[2];
+    rate_z_target_publisher.publish(rate_msg);
 
     if (rc_mode == -1)
     {
@@ -1863,9 +1863,10 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
     static bool pre_state;
     static bool weak_power_state;
 
-    std_msgs::Float32 rate_msg;
-    rate_msg.data = k;
-    rate_z_target_publisher.publish(rate_msg);
+    // std_msgs::Float32 rate_msg;
+    // rate_msg.data = k;
+    // rate_z_target_publisher.publish(rate_msg);
+
     if(weak_power_state){
         if(total_u < 1.6){
             weak_power_state = (k>0.032);
