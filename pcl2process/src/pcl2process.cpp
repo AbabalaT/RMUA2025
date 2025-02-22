@@ -131,8 +131,8 @@ float current_x = 0.0, current_y = 0.0, current_z = 0.0;
 
 void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-    odom_pos[0] = msg->pose.pose.position.x - 750.0;
-    odom_pos[1] = msg->pose.pose.position.y;
+    odom_pos[0] = msg->pose.pose.position.x;
+    odom_pos[1] = msg->pose.pose.position.y- 750.0;
     odom_pos[2] = msg->pose.pose.position.z;
     Quaternion q_measure;
     q_measure.w = msg->pose.pose.orientation.w;

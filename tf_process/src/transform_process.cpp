@@ -136,7 +136,7 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     new_msg.header.stamp = ros::Time::now();
     new_msg.header.frame_id = "world";
     // new_msg.child_frame_id = "base_link";
-    new_msg.pose.pose.position.x = new_msg.pose.pose.position.x - 750.0;
+    new_msg.pose.pose.position.y = new_msg.pose.pose.position.y - 750.0;
     lio_pub.publish(new_msg);
     new_msg.child_frame_id = "body";
 
@@ -178,7 +178,7 @@ void drone_cmd_callback(const quadrotor_msgs::PositionCommandConstPtr& msg)
     received_drone_cmd->w_yaw = msg->yaw_dot;
     // drone_cmds.push_back(received_drone_cmd);
     float cmd_array[11] = {
-        (received_drone_cmd->pos[0]) + 750, received_drone_cmd->pos[1], received_drone_cmd->pos[2],
+        (received_drone_cmd->pos[0]) , received_drone_cmd->pos[1]+ 750, received_drone_cmd->pos[2],
         received_drone_cmd->vel[0], received_drone_cmd->vel[1], received_drone_cmd->vel[2],
         received_drone_cmd->acc[0], received_drone_cmd->acc[1], received_drone_cmd->acc[2],
         received_drone_cmd->yaw, received_drone_cmd->w_yaw
@@ -294,8 +294,8 @@ void project2plane_callback(const ros::TimerEvent&)
     trans.transform.rotation.y = 0.0;
     trans.transform.rotation.z = 0.0;
     trans.transform.rotation.w = 1.0;
-    trans.transform.translation.x = -750;
-    trans.transform.translation.y = 0;
+    trans.transform.translation.x = 0;
+    trans.transform.translation.y = -750;
     trans.transform.translation.z = 0;
     br.sendTransform(trans);
 }

@@ -560,13 +560,15 @@ namespace ego_planner
     success = planner_manager_->planGlobalTrajWaypoints(
         odom_pos_, odom_vel_, Eigen::Vector3d::Zero(),
         next_wp, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
-
+    
     // visualization_->displayGoalPoint(next_wp, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
-
+    for(const auto& point : next_wp){
+      std::cout<< point.transpose()<<std::endl;
+    }
     if (success)
     {
-      final_goal_ = *next_wp.end();
-
+      final_goal_ = next_wp.back();
+      std::cout<<"final target"<< final_goal_[0]<<std::endl;
       /*** display ***/
       constexpr double step_size_t = 0.1;
       int i_end = floor(planner_manager_->traj_.global_traj.duration / step_size_t);
@@ -653,6 +655,7 @@ namespace ego_planner
                             pose.pose.position.y,
                             pose.pose.position.z);
       path_points_.push_back(point);
+      // std::cout<<"waypoint Z:"<<pose.pose.position.z<<std::endl;
     }
     if (planNextWaypoint(path_points_))
     {

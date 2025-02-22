@@ -221,9 +221,10 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     new_point.y = odom_msg.pose.pose.position.y;
     new_point.z = odom_msg.pose.pose.position.z;
     // route_cloud->points.push_back(new_point);
-    // if(rc_channel[5] < -100){
-    //   outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
-    // }
+    if(rc_channel[5] < -100){
+      outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
+    //   std::cout<<rc_channel[5]<<std::endl;
+    }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -480,7 +481,7 @@ int main(int argc, char** argv)
     ahrs_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/ahrs", 10);
     uwb_map_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb2", 10);
     acc_pub = pnh.advertise<std_msgs::Float32MultiArray>("/exe/output_acc", 10);
-
+    rc_channel[5] = 100.0;
     mahony_quaternion[0] = 1.0;
     mahony_quaternion[1] = 0.0;
     mahony_quaternion[2] = 0.0;

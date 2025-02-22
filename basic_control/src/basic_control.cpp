@@ -7,6 +7,7 @@
 float rc_channel[6] = {0.0, 0.0, -1000.0, 0.0, 0.0, 0.0};
 int ctrl_mode = 0;
 int rc_mode = 0;
+float imu_angle[3];
 
 typedef struct
 {
@@ -49,6 +50,8 @@ float pid_N_v = 0.9f;
 long imu_t;
 long pose_t;
 long pre_imu_sec, pre_imu_nsec, pre_pose_sec, pre_pose_nsec;
+
+bool weak_power_state;
 
 double kalman_roll(float measure)
 {
@@ -243,27 +246,27 @@ void pid_weak(void)
     velocity_pid_mat[1][3] = 0.12;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.072f;
+    velocity_pid_mat[2][1] = 0.12f;
     velocity_pid_mat[2][2] = 0.01f;
-    velocity_pid_mat[2][3] = 0.012f;
+    velocity_pid_mat[2][3] = 0.12f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 1.25;
-    pos_pid_mat[0][2] = 1.4;
+    pos_pid_mat[0][1] = 1.3;
+    pos_pid_mat[0][2] = 1.2;
     pos_pid_mat[0][3] = 0.45;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 1.25;
-    pos_pid_mat[1][2] = 1.4;
+    pos_pid_mat[1][1] = 1.3;
+    pos_pid_mat[1][2] = 1.2;
     pos_pid_mat[1][3] = 0.45;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 1.28;
-    pos_pid_mat[2][2] = 1.4;
+    pos_pid_mat[2][1] = 1.3;
+    pos_pid_mat[2][2] = 1.2;
     pos_pid_mat[2][3] = 0.45;
 
     pos_pid_mat[3][0] = 0.0;
-    pos_pid_mat[3][1] = 6.0;
+    pos_pid_mat[3][1] = 2.0;
     pos_pid_mat[3][2] = 0.0;
     pos_pid_mat[3][3] = 0.0;
 }
@@ -778,7 +781,7 @@ float pid_vz(float target, float real)
     d_out_1 = d_out;
 
     result = velocity_pid_mat[2][0] * target + velocity_pid_mat[2][1] * (error + velocity_pid_mat[2][2] * sum * 0.01 +
-        velocity_pid_mat[2][3] * d_out / 0.01);
+        velocity_pid_mat[2][3] * d_out * 100.0);
     return result;
 }
 
@@ -1511,9 +1514,16 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
             {
                 if (!isnan(tf_cmd[8]))
                 {
-                    world_force[0] += tf_cmd[6] * 0.45 / 49.03; //12:all max thrust
-                    world_force[1] += tf_cmd[7] * 0.45 / 49.03;
-                    world_force[2] += tf_cmd[8] * 0.45 / 49.03;
+                    if(weak_power_state){
+                        world_force[0] += tf_cmd[6] * 0.45 / 30.03; //12:all max thrust
+                        world_force[1] += tf_cmd[7] * 0.45 / 30.03;
+                        world_force[2] += tf_cmd[8] * 0.45 / 30.03;
+                    }
+                    else{
+                        world_force[0] += tf_cmd[6] * 0.45 / 49.03; //12:all max thrust
+                        world_force[1] += tf_cmd[7] * 0.45 / 49.03;
+                        world_force[2] += tf_cmd[8] * 0.45 / 49.03;
+                    }                    
                 }
             }
         }
@@ -1644,7 +1654,10 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     measure_yaw = atan2(
         2.0 * (measure_quaternion.w * measure_quaternion.z + measure_quaternion.x * measure_quaternion.y),
         1.0 - 2.0 * (measure_quaternion.y * measure_quaternion.y + measure_quaternion.z * measure_quaternion.z));
-
+    imu_angle[2] = measure_yaw;
+    imu_angle[0] = atan2(2.0 * (measure_quaternion.w * measure_quaternion.x + measure_quaternion.y * measure_quaternion.z),
+        1.0 - 2.0 * (measure_quaternion.x * measure_quaternion.x + measure_quaternion.y * measure_quaternion.y));
+    imu_angle[1] = asin(2.0 * (measure_quaternion.w * measure_quaternion.y - measure_quaternion.z * measure_quaternion.x));
     Quaternion de_yaw_quaternion = yaw_to_quaternion(-measure_yaw);
     Quaternion de_yaw_ahrs = multiply_quaternion(&de_yaw_quaternion, &measure_quaternion);
 
@@ -1859,30 +1872,30 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
 
     float total_u = pwm_cmd.rotorPWM0 + pwm_cmd.rotorPWM1 + pwm_cmd.rotorPWM2 + pwm_cmd.rotorPWM3;
     float k = total_u / (no_g_acc[0] * no_g_acc[0] + no_g_acc[1] * no_g_acc[1] + no_g_acc[2] * no_g_acc[2]);
-
+    k = k * cos(imu_angle[0]) * cos(imu_angle[1]);
     static bool pre_state;
-    static bool weak_power_state;
+    
 
     // std_msgs::Float32 rate_msg;
     // rate_msg.data = k;
     // rate_z_target_publisher.publish(rate_msg);
 
     if(weak_power_state){
-        if(total_u < 1.6){
+        if(total_u < 2.0){
             weak_power_state = (k>0.032);
         }else{
-            weak_power_state = (k>0.024);
+            weak_power_state = (k>0.016);
         }
     }else{
         if(total_u > 0.6){
             weak_power_state = (k>0.012);
         }else{
-            weak_power_state = (k>0.032);
+            weak_power_state = (k>0.045);
         }
     }
     
-    if(weak_power_state){
-        std::cout<<"weak mode"<<std::endl;
+    if(1){
+        std::cout<<k<<"   "<<total_u<<std::endl;
     }
 
     if(weak_power_state != pre_state){

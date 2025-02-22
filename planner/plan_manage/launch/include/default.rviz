@@ -372,7 +372,7 @@ Visualization Manager:
               Autocompute Intensity Bounds: true
               Autocompute Value Bounds:
                 Max Value: 37.875
-                Min Value: 30.375
+                Min Value: 29.875
                 Value: true
               Axis: Z
               Channel Name: intensity
@@ -5959,8 +5959,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 138.1598358154297
-        Min Value: 132.71875
+        Max Value: 43.049888610839844
+        Min Value: 30.074949264526367
         Value: true
       Axis: Z
       Channel Name: z
@@ -5968,7 +5968,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -5983,7 +5983,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -6014,7 +6014,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 23.98662567138672
+      Distance: 18.77111053466797
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -6022,17 +6022,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 5.0811967849731445
+        Y: -2.154599189758301
+        Z: -9.5367431640625e-07
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.14539867639541626
+      Pitch: 0.5047991275787354
       Target Frame: base_link
-      Yaw: 3.005399465560913
+      Yaw: 3.689085006713867
     Saved:
       - Class: rviz/FPS
         Enable Stereo Rendering:
