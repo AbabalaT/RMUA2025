@@ -179,7 +179,7 @@ void getcloud_air(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
 //        return;
 //    }else{
 //        long point_num = 0;
-//        for (long i = 0; i < pcl2cloud->points.size(); i = i + 1){
+//        for (long i = 0; i < pcl2cloud->points.poseCallbacksize(); i = i + 1){
 //            if (pcl2cloud->points[i].x - current_x < 0.25
 //                  and pcl2cloud->points[i].x - current_x > -0.25
 //                  and pcl2cloud->points[i].y - current_y < 0.25
