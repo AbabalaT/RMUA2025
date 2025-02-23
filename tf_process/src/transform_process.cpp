@@ -314,15 +314,15 @@ int main(int argc, char** argv)
     ros::Subscriber pose_sub = pnh.subscribe("/odometry/filtered", 10, poseCallback);
 
     drone_cmd received_drone_cmd;
-    received_drone_cmd.pos[0] = 9999.0;
-    received_drone_cmd.pos[1] = 9999.0;
-    received_drone_cmd.pos[2] = 9999.0;
-    received_drone_cmd.vel[0] = 0;
-    received_drone_cmd.vel[1] = 0;
-    received_drone_cmd.vel[2] = 0;
-    received_drone_cmd.acc[0] = 0;
-    received_drone_cmd.acc[1] = 0;
-    received_drone_cmd.acc[2] = 0;
+    received_drone_cmd.pos[0] = NAN;
+    received_drone_cmd.pos[1] = NAN;
+    received_drone_cmd.pos[2] = NAN;
+    received_drone_cmd.vel[0] = NAN;
+    received_drone_cmd.vel[1] = NAN;
+    received_drone_cmd.vel[2] = NAN;
+    received_drone_cmd.acc[0] = NAN;
+    received_drone_cmd.acc[1] = NAN;
+    received_drone_cmd.acc[2] = NAN;
     // drone_cmds.push_back(received_drone_cmd);
 
     ros::spin();

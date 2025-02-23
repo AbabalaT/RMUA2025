@@ -12,6 +12,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
+#include <std_msgs/Bool.h>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -47,6 +48,8 @@ typedef struct
 float mahony_quaternion[4];
 
 float odom_pos[7];
+
+bool enable_switch = false;
 
 
 
@@ -147,6 +150,11 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     odom_pos[6] = q_measured.w;
 }
 
+void enableCallback(const std_msgs::Bool::ConstPtr& msg)
+{
+    enable_switch = msg->data;
+}
+
 void getcloud_air(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     pcl::PointCloud<pcl::PointXYZ>::Ptr lasercloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcl2cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -203,7 +211,10 @@ void getcloud_air(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
 
         ROSPCL_output.header.frame_id = "world";
         ROSPCL_output.header.stamp = ros::Time::now();
-        pcl_publisher.publish(ROSPCL_output);
+        if (enable_switch)
+        {
+            pcl_publisher.publish(ROSPCL_output);
+        }
 //    }
 }
 
@@ -214,6 +225,7 @@ int main(int argc, char **argv)
     tf2_ros::TransformListener tfListener(tfBuffer);
     auto subCloud = pnh.subscribe<sensor_msgs::PointCloud2>("/pointcloud2_in", 1, getcloud_air);
     ros::Subscriber pose_sub = pnh.subscribe("/odometry/filtered", 10, poseCallback);
+    ros::Subscriber enable_sub = pnh.subscribe("/pcl/enable", 10, enableCallback);
     pcl_publisher = pnh.advertise<sensor_msgs::PointCloud2>("/pointcloud2_out", 1);
     ros::spin();
     return 0;
