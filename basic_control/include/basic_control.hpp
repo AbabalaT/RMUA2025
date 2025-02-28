@@ -63,6 +63,7 @@ private:
 
     ros::Timer rc_mode_timer;
     ros::Timer pwm_send_timer;
+    ros::Timer scheduler_timer;
 
     void channel1_callback(const std_msgs::Float32::ConstPtr& msg);
     void channel2_callback(const std_msgs::Float32::ConstPtr& msg);

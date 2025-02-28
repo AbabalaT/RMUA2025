@@ -55,6 +55,8 @@ long imu_t;
 long pose_t;
 long pre_imu_sec, pre_imu_nsec, pre_pose_sec, pre_pose_nsec;
 
+bool force_strong_power_mode = false;
+
 bool weak_power_state;
 
 double kalman_roll(float measure)
@@ -157,7 +159,7 @@ ButterworthFilter world_pos_x_filter, world_pos_y_filter, world_pos_z_filter;
 
 float point_distance(const float p1[], const float p2[])
 {
-    float dist = 0;
+    float dist = 0.0;
     for (int i = 0; i < 3; i++)
     {
         dist += (p2[i] - p1[i]) * (p2[i] - p1[i]);
@@ -1336,7 +1338,7 @@ BasicControl::BasicControl(ros::NodeHandle* nh)
                                                               std::bind(&BasicControl::start_pose_callback, this,
                                                                         std::placeholders::_1));
 
-    end_pose_suber = nh->subscribe<geometry_msgs::PoseStamped>("/airsim_node/initial_pose", 1,
+    end_pose_suber = nh->subscribe<geometry_msgs::PoseStamped>("/airsim_node/end_goal", 1,
                                                               std::bind(&BasicControl::end_pose_callback, this,
                                                                         std::placeholders::_1));
 
@@ -1361,6 +1363,9 @@ BasicControl::BasicControl(ros::NodeHandle* nh)
                                     std::bind(&BasicControl::rc_mode_check_callback, this, std::placeholders::_1));
     pwm_send_timer = nh->createTimer(ros::Duration(0.0125),
                                      std::bind(&BasicControl::pwm_send_callback, this, std::placeholders::_1));
+
+    scheduler_timer = nh->createTimer(ros::Duration(0.25), 
+                                     std::bind(&BasicControl::scheduler_callback, this, std::placeholders::_1));
 
     for (int i = 0; i < 11; i++)
     {
@@ -1911,7 +1916,8 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
     // no_g_acc[2] = msg->data[2];
 
     float total_u = pwm_cmd.rotorPWM0 + pwm_cmd.rotorPWM1 + pwm_cmd.rotorPWM2 + pwm_cmd.rotorPWM3;
-    float k = total_u / (no_g_acc[0] * no_g_acc[0] + no_g_acc[1] * no_g_acc[1] + no_g_acc[2] * no_g_acc[2]);
+    float k = total_u / sqrt(no_g_acc[0] * no_g_acc[0] + no_g_acc[1] * no_g_acc[1] + no_g_acc[2] * no_g_acc[2]);
+    // float k =
     k = k * cos(imu_angle[0]) * cos(imu_angle[1]);
     static bool pre_state;
     
@@ -1922,21 +1928,29 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
 
     if(weak_power_state){
         if(total_u < 2.0){
-            weak_power_state = (k>0.032);
+            weak_power_state = (k>0.32);
         }else{
-            weak_power_state = (k>0.016);
+            weak_power_state = (k>0.16);
         }
     }else{
         if(total_u > 0.6){
-            weak_power_state = (k>0.012);
+            weak_power_state = (k>0.12);
         }else{
-            weak_power_state = (k>0.045);
+            weak_power_state = (k>0.4);
         }
     }
-    
-    if(1){
-        std::cout<<k<<"   "<<total_u<<std::endl;
+
+    if(force_strong_power_mode){
+        weak_power_state = false;
     }
+
+    if(weak_power_state){
+        std::cout<<"weak power!"<<std::endl;
+    }
+    
+    // if(1){
+    //     std::cout<<k<<"   "<<total_u<<std::endl;
+    // }
 
     if(weak_power_state != pre_state){
         if(weak_power_state){
@@ -2039,6 +2053,8 @@ auto exe_path1 = mission_path_list.begin();//from start
 auto exe_path2 = mission_path_list.begin();//from end
 nav_msgs::Path mission_path_1;
 nav_msgs::Path mission_path_2;
+nav_msgs::Path mission_path_3;
+nav_msgs::Path mission_path_4;
 
 void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 {
@@ -2102,32 +2118,47 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         //prepare path
         if (mission_step == 4)
         {
-            float min_distance = 99999.0;
+            std::cout<<"start pose "<<start_pose[0]<<", "<<start_pose[1]<<", "<<start_pose[2]<<std::endl;
+            std::cout<<"end pose "<<end_pose[0]<<", "<<end_pose[1]<<", "<<end_pose[2]<<std::endl;
+            float min_distance = 5000.0;
             int i = 0;
+            int id = 0;
+
             for (auto path = mission_path_list.begin(); path != mission_path_list.end(); path++)
             {
                 i = i + 1;
-                float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
-                if (point_distance(start_pose, path_begin_point) < min_distance)
+                float path_begin_point[] = {path->front().position[0], path->front().position[1] + 750.0, path->front().position[2]};
+                std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
+                std::cout<<"path"<<i<<" pose "<< path_begin_point[0]<<", "<< path_begin_point[1]<<", "<< path_begin_point[2] <<std::endl;
+                float current_distance = point_distance(start_pose, path_begin_point);
+                std::cout<<"current distance: "<< current_distance << std::endl;
+                
+                if (current_distance < min_distance)
                 {
                     exe_path1 = path;
-                    min_distance = point_distance(start_pose, path_begin_point);
+                    min_distance = current_distance;
+                    id = i;
                 }
+                std::cout<<"min distance"<<min_distance<<std::endl;
+                
             }
-            std::cout<<"go path id: "<<i<<std::endl;
+            std::cout<<"go path id: "<<id<<std::endl;
             min_distance = 99999.0;
             i = 0;
             for (auto path = mission_path_list.begin(); path != mission_path_list.end(); path++)
             {
                 i = i + 1;
-                float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
-                if (point_distance(end_pose, path_begin_point) < min_distance)
+                std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
+                float path_begin_point[] = {path->front().position[0], path->front().position[1] + 750.0, path->front().position[2]};
+                float current_distance = point_distance(end_pose, path_begin_point);
+                if (current_distance < min_distance)
                 {
                     exe_path2 = path;
-                    min_distance = point_distance(start_pose, path_begin_point);
+                    min_distance = current_distance;
+                    id = i;
                 }
             }
-            std::cout<<"back path id: "<<i<<std::endl;
+            std::cout<<"back path id: "<<id<<std::endl;
             mission_step = 5;
             return;
         }
@@ -2151,7 +2182,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 path_point.pose.position.x = point->position[0];
                 path_point.pose.position.y = point->position[1];
                 path_point.pose.position.z = point->position[2];
-                mission_path_1.poses.push_back(path_point);
+                mission_path_2.poses.push_back(path_point);
             }
             for (auto point = exe_path2->begin(); point != exe_path2->end(); ++point)
             {
@@ -2159,7 +2190,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 path_point.pose.position.x = point->position[0];
                 path_point.pose.position.y = point->position[1];
                 path_point.pose.position.z = point->position[2];
-                mission_path_2.poses.push_back(path_point);
+                mission_path_3.poses.push_back(path_point);
             }
             for (auto point = exe_path1->rbegin(); point != exe_path1->rend(); ++point)
             {
@@ -2167,19 +2198,50 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 path_point.pose.position.x = point->position[0];
                 path_point.pose.position.y = point->position[1];
                 path_point.pose.position.z = point->position[2];
-                mission_path_2.poses.push_back(path_point);
+                mission_path_4.poses.push_back(path_point);
             }
             exe_path_publisher.publish(mission_path_1);
+            target_world_pos[0] = exe_path1->back().position[0];
+            target_world_pos[1] = exe_path1->back().position[1] + 750.0;
+            target_world_pos[2] = exe_path1->back().position[2];
             mission_step = 6;
             return;
         }
         if (mission_step == 6)
         {
-            if (point_distance(measure_world_pos, end_pose) < 3.0)
+            if (point_distance(measure_world_pos, target_world_pos) < 2.0)
             {
                 exe_path_publisher.publish(mission_path_2);
+                target_world_pos[0] = exe_path2->front().position[0];
+                target_world_pos[1] = exe_path2->front().position[1] + 750.0;
+                target_world_pos[2] = exe_path2->front().position[2];
+                mission_step = 7;
             }
-            mission_step = 7;
+            return;
+        }
+        if(mission_step == 7){
+            if (point_distance(measure_world_pos, target_world_pos) < 2.0)
+            {
+                exe_path_publisher.publish(mission_path_3);
+                target_world_pos[0] = exe_path2->back().position[0];
+                target_world_pos[1] = exe_path2->back().position[1] + 750.0;
+                target_world_pos[2] = exe_path2->back().position[2];
+                mission_step = 8;
+                force_strong_power_mode = true;
+            }
+            return;
+        }
+        if(mission_step == 8){
+            if (point_distance(measure_world_pos, target_world_pos) < 2.0)
+            {
+                exe_path_publisher.publish(mission_path_4);
+                target_world_pos[0] = exe_path1->front().position[0];
+                target_world_pos[1] = exe_path1->front().position[1] + 750.0;
+                target_world_pos[2] = exe_path1->front().position[2];
+                mission_step = 9;
+                force_strong_power_mode = true;
+            }
+            return;
         }
         //forward road
         //back road

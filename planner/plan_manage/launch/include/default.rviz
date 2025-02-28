@@ -175,8 +175,6 @@ Panels:
         - /drone411/Planning1/drone_path1
         - /drone411/Mapping1/map inflate1
         - /MovingObstaclesJoystick01/PredictedTrajectories1
-        - /Path1
-        - /PointCloud21
       Splitter Ratio: 0.4771505296230316
     Tree Height: 407
   - Class: rviz/Selection
@@ -285,7 +283,7 @@ Visualization Manager:
               Marker Topic: /drone_0_ego_planner_node/optimal_list
               Name: optimal_traj
               Namespaces:
-                {}
+                "": true
               Queue Size: 100
               Value: true
             - Class: rviz/Marker
@@ -371,8 +369,8 @@ Visualization Manager:
             - Alpha: 1
               Autocompute Intensity Bounds: true
               Autocompute Value Bounds:
-                Max Value: 37.875
-                Min Value: 29.875
+                Max Value: 80.625
+                Min Value: 64.375
                 Value: true
               Axis: Z
               Channel Name: intensity
@@ -5984,6 +5982,41 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: false
+      Keep: 100
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Queue Size: 10
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /debug/real_map_odom
+      Unreliable: false
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -6014,7 +6047,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 18.77111053466797
+      Distance: 76.66512298583984
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -6030,9 +6063,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5047991275787354
+      Pitch: 0.33979934453964233
       Target Frame: base_link
-      Yaw: 3.689085006713867
+      Yaw: 3.369072675704956
     Saved:
       - Class: rviz/FPS
         Enable Stereo Rendering:

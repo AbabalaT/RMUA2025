@@ -104,7 +104,7 @@
         <param name="grid_map/p_min" value="0.12"/>
         <param name="grid_map/p_max" value="0.90"/>
         <param name="grid_map/p_occ" value="0.4"/>
-        <param name="grid_map/fading_time" value="100.0"/>
+        <param name="grid_map/fading_time" value="4.0"/>
         <param name="grid_map/min_ray_length" value="0.0"/>
         <param name="grid_map/max_ray_length" value="40.0"/>
         <param name="grid_map/visualization_truncate_height" value="30.0"/>
