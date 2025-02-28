@@ -170,7 +170,7 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     nav_msgs::Odometry odom_msg;
 
 
-    odom_msg.header.stamp = msg->header.stamp;
+    odom_msg.header.stamp = ros::Time::now();
     odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
 
@@ -280,6 +280,15 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     //    odom_msg.twist.twist.angular.z = 0.0;
 
     odom_pub.publish(odom_msg);
+
+    odom_msg.pose.covariance[0] = 0.01;
+    odom_msg.pose.covariance[7] = 0.01;
+    odom_msg.pose.covariance[14] = 0.01;
+
+    odom_msg.pose.covariance[21] = 0.001;
+    odom_msg.pose.covariance[28] = 0.001;
+    odom_msg.pose.covariance[35] = 0.001;
+
     odom_msg.header.frame_id = "map_odom";
     uwb_map_pub.publish(odom_msg);
 }
@@ -291,7 +300,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
     imu_stamp = ros::Time::now();
     sensor_msgs::Imu new_msg = *msg;
-    //	new_msg.header.stamp = ros::Time::now();
     new_msg.header.frame_id = "base_link";
 
     Quaternion q_measure;
@@ -305,23 +313,21 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     new_msg.orientation.z = q_measure.z;
     new_msg.orientation.w = q_measure.w;
 
-    double conv_1 = 0.1;
-    double conv_2 = 0.25;
-    double conv_3 = 1e-5;
-    double conv_4 = 1e-5;
+    double conv_1 = 0.01;
+    double conv_2 = 0.0625;
+    double conv_3 = 0.0;
+    double conv_4 = 0.0;
+
     new_msg.angular_velocity_covariance[0] = conv_1;
+    new_msg.angular_velocity_covariance[4] = conv_1;
+    new_msg.angular_velocity_covariance[8] = conv_1;
 
     new_msg.angular_velocity_covariance[1] = conv_3;
     new_msg.angular_velocity_covariance[2] = conv_3;
     new_msg.angular_velocity_covariance[3] = conv_3;
-
-    new_msg.angular_velocity_covariance[4] = conv_1;
-
     new_msg.angular_velocity_covariance[5] = conv_3;
     new_msg.angular_velocity_covariance[6] = conv_3;
     new_msg.angular_velocity_covariance[7] = conv_3;
-
-    new_msg.angular_velocity_covariance[8] = conv_1;
 
     new_msg.linear_acceleration_covariance[0] = conv_2;
     new_msg.linear_acceleration_covariance[4] = conv_2;
@@ -333,10 +339,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     new_msg.linear_acceleration_covariance[5] = conv_4;
     new_msg.linear_acceleration_covariance[6] = conv_4;
     new_msg.linear_acceleration_covariance[7] = conv_4;
-
-    //    MahonyAHRSupdateIMU(mahony_quaternion, new_msg.angular_velocity.x, new_msg.angular_velocity.y, new_msg.angular_velocity.z,
-    //                        new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
-    //ROS_INFO("IMU quaternion: w: %f, x: %f, y:%f, z:%f", mahony_quaternion[0], mahony_quaternion[1], mahony_quaternion[2], mahony_quaternion[3]);
 
     tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z,
                                        new_msg.orientation.w);
@@ -432,8 +434,15 @@ void project2plane_callback(const ros::TimerEvent&)
     }
     catch (tf2::TransformException& ex)
     {
-        ROS_WARN("BaseLink Get TF ERROR!");
-        return;
+        try
+        {
+            base2plane = tfBuffer.lookupTransform("map_odom", "base_link", ros::Time(0));
+        }
+        catch (tf2::TransformException& ex)
+        {
+            ROS_WARN("BaseLink Get TF ERROR!");
+            return;
+        }
     }
     base2plane.transform.translation.z = 0;
     base2plane.header.stamp = ros::Time::now();
