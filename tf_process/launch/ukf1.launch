@@ -1,6 +1,6 @@
 <launch>
     <include file="$(find fast_lio)/launch/mapping_mid360.launch"/>
-    <node pkg="robot_localization" type="ukf_localization_node" name="ekf_localization">
+    <node pkg="robot_localization" type="ukf_localization_node" name="ukf_localization">
 
       <param name="frequency" value="100"/>
       <param name="sensor_timeout" value="100000000"/>

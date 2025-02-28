@@ -174,20 +174,10 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
 
-    double conv_1 = 0.1f;
-    double conv_2 = 0.01f;
-
     for (int i = 0; i < 35; i++)
     {
         odom_msg.pose.covariance[0] = 0.0;
     }
-
-    odom_msg.pose.covariance[0] = conv_1;
-    odom_msg.pose.covariance[7] = conv_1;
-    odom_msg.pose.covariance[14] = conv_1;
-    odom_msg.pose.covariance[21] = conv_2;
-    odom_msg.pose.covariance[28] = conv_2;
-    odom_msg.pose.covariance[35] = conv_2;
 
     odom_msg.pose.pose.position.x = msg->pose.position.y;
     odom_msg.pose.pose.position.y = msg->pose.position.x;
@@ -293,8 +283,9 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     uwb_map_pub.publish(odom_msg);
 }
 
-double zero[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-int imu_cnt = 0;
+double zero[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+int imu_cnt = -99;
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
@@ -313,14 +304,21 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     new_msg.orientation.z = q_measure.z;
     new_msg.orientation.w = q_measure.w;
 
-    double conv_1 = 0.01;
-    double conv_2 = 0.0625;
-    double conv_3 = 0.0;
-    double conv_4 = 0.0;
+    static double conv_11 = 0.0;
+    static double conv_12 = 0.0;
+    static double conv_13 = 0.0;
+    static double conv_21 = 0.0;
+    static double conv_22 = 0.0;
+    static double conv_23 = 0.0;
 
-    new_msg.angular_velocity_covariance[0] = conv_1;
-    new_msg.angular_velocity_covariance[4] = conv_1;
-    new_msg.angular_velocity_covariance[8] = conv_1;
+    static double conv_3 = 0.0;
+    static double conv_4 = 0.0;
+
+    static double easy_cnt = 0.0;
+
+    new_msg.angular_velocity_covariance[0] = conv_21;
+    new_msg.angular_velocity_covariance[4] = conv_22;
+    new_msg.angular_velocity_covariance[8] = conv_23;
 
     new_msg.angular_velocity_covariance[1] = conv_3;
     new_msg.angular_velocity_covariance[2] = conv_3;
@@ -329,9 +327,9 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     new_msg.angular_velocity_covariance[6] = conv_3;
     new_msg.angular_velocity_covariance[7] = conv_3;
 
-    new_msg.linear_acceleration_covariance[0] = conv_2;
-    new_msg.linear_acceleration_covariance[4] = conv_2;
-    new_msg.linear_acceleration_covariance[8] = conv_2;
+    new_msg.linear_acceleration_covariance[0] = conv_11;
+    new_msg.linear_acceleration_covariance[4] = conv_12;
+    new_msg.linear_acceleration_covariance[8] = conv_13;
 
     new_msg.linear_acceleration_covariance[1] = conv_4;
     new_msg.linear_acceleration_covariance[2] = conv_4;
@@ -346,7 +344,16 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     tf2::Vector3 acc_body(new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
 
     tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
-    acc_world.setZ(acc_world.z() + 9.806);
+
+    float acc_array[3] = {
+        static_cast<float>(acc_world.x()), static_cast<float>(acc_world.y()), static_cast<float>(acc_world.z())
+    };
+    if (imu_cnt > 0)
+    {
+        acc_world.setZ(acc_world.z() + zero[6]);
+    }
+
+
     acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
 
     new_msg.linear_acceleration.x = acc_body.x();
@@ -355,43 +362,72 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
     new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
     new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
-
-    if (imu_cnt < 300)
+    if (imu_cnt <= 0)
     {
+        std::cout<<"imu_cnt"<<imu_cnt<<std::endl;
+        zero[6] = zero[6] + sqrt(acc_body.x()*acc_body.x()+acc_body.y()*acc_body.y()+acc_body.z()*acc_body.z());
+        easy_cnt = easy_cnt + 1.0;
+        if (imu_cnt == 0)
+        {
+            zero[6] /= easy_cnt;
+            std::cout <<"estimated G:"<< zero[6] << std::endl;
+            easy_cnt = 0.0;
+        }
         imu_cnt = imu_cnt + 1;
+        return;
+    }
+
+    if (imu_cnt < 301)
+    {
         zero[0] += new_msg.linear_acceleration.x;
         zero[1] += new_msg.linear_acceleration.y;
         zero[2] += new_msg.linear_acceleration.z;
         zero[3] += new_msg.angular_velocity.x;
         zero[4] += new_msg.angular_velocity.y;
         zero[5] += new_msg.angular_velocity.z;
+
+        conv_11 += new_msg.linear_acceleration.x * new_msg.linear_acceleration.x;
+        conv_12 += new_msg.linear_acceleration.y * new_msg.linear_acceleration.y;
+        conv_13 += new_msg.linear_acceleration.z * new_msg.linear_acceleration.z;
+
+        conv_21 += new_msg.angular_velocity.x * new_msg.angular_velocity.x;
+        conv_22 += new_msg.angular_velocity.y * new_msg.angular_velocity.y;
+        conv_23 += new_msg.angular_velocity.z * new_msg.angular_velocity.z;
+
+        easy_cnt = easy_cnt + 1.0;
+
         if (imu_cnt == 300)
         {
-            zero[0] = zero[0] / -300.0;
-            zero[1] = zero[1] / -300.0;
-            zero[2] = zero[2] / -300.0;
-            zero[3] = zero[3] / -300.0;
-            zero[4] = zero[4] / -300.0;
-            zero[5] = zero[5] / -300.0;
+            zero[0] = zero[0] / -easy_cnt;
+            zero[1] = zero[1] / -easy_cnt;
+            zero[2] = zero[2] / -easy_cnt;
+            zero[3] = zero[3] / -easy_cnt;
+            zero[4] = zero[4] / -easy_cnt;
+            zero[5] = zero[5] / -easy_cnt;
+
+            conv_11 /= easy_cnt;
+            conv_12 /= easy_cnt;
+            conv_13 /= easy_cnt;
+            conv_21 /= easy_cnt;
+            conv_22 /= easy_cnt;
+            conv_23 /= easy_cnt;
+
             std::cout << zero[0] << " " << zero[1] << " " << zero[2] << " " << zero[3] << std::endl;
         }
+        imu_cnt = imu_cnt + 1;
+        return;
     }
-    else
-    {
-        new_msg.linear_acceleration.x += zero[0];
-        new_msg.linear_acceleration.y += zero[1];
-        new_msg.linear_acceleration.z += zero[2];
-        new_msg.angular_velocity.x += zero[3];
-        new_msg.angular_velocity.y += zero[4];
-        new_msg.angular_velocity.z += zero[5];
-    }
+    new_msg.linear_acceleration.x += zero[0];
+    new_msg.linear_acceleration.y += zero[1];
+    new_msg.linear_acceleration.z += zero[2];
+    new_msg.angular_velocity.x += zero[3];
+    new_msg.angular_velocity.y += zero[4];
+    new_msg.angular_velocity.z += zero[5];
 
     imu_now_pub.publish(new_msg);
     Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
     world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
-    float acc_array[3] = {
-        static_cast<float>(new_msg.linear_acceleration.x), static_cast<float>(new_msg.linear_acceleration.y), static_cast<float>(new_msg.linear_acceleration.z)
-    };
+
     std_msgs::Float32MultiArray acc_msg;
     acc_msg.data.assign(acc_array, acc_array + 3);
     acc_pub.publish(acc_msg);

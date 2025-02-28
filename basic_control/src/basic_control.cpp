@@ -1911,14 +1911,15 @@ void BasicControl::tf_cmd_callback(const std_msgs::Float32MultiArray::ConstPtr& 
 
 void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
 {
-    // no_g_acc[0] = msg->data[0];
-    // no_g_acc[1] = msg->data[1];
-    // no_g_acc[2] = msg->data[2];
+    no_g_acc[0] = msg->data[0];
+    no_g_acc[1] = msg->data[1];
+    no_g_acc[2] = msg->data[2];
 
     float total_u = pwm_cmd.rotorPWM0 + pwm_cmd.rotorPWM1 + pwm_cmd.rotorPWM2 + pwm_cmd.rotorPWM3;
-    float k = total_u /no_g_acc[2] / no_g_acc[2]; //sqrt(no_g_acc[0] * no_g_acc[0] + no_g_acc[1] * no_g_acc[1] + no_g_acc[2] * no_g_acc[2]);
+    float k = total_u / abs(no_g_acc[2]); //sqrt(no_g_acc[0] * no_g_acc[0] + no_g_acc[1] * no_g_acc[1] + no_g_acc[2] * no_g_acc[2]);
 
-    // k = k * cos(imu_angle[0]) * cos(imu_angle[1]);
+    k = k * cos(imu_angle[0]) * cos(imu_angle[1]);
+
     static bool pre_state;
 
     // std_msgs::Float32 rate_msg;
@@ -1926,16 +1927,16 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
     // rate_z_target_publisher.publish(rate_msg);
 
     if(weak_power_state){
-        if(total_u < 2.0){
-            weak_power_state = (k>0.32);
+        if(total_u < 2.86){//min than 2.86
+            weak_power_state = (k>0.24);
         }else{
-            weak_power_state = (k>0.16);
+            weak_power_state = (k>0.24);
         }
     }else{
-        if(total_u > 0.6){
+        if(total_u > 0.72){//max than 0.72
             weak_power_state = (k>0.12);
         }else{
-            weak_power_state = (k>0.4);
+            weak_power_state = (k>0.48);
         }
     }
 
@@ -1943,7 +1944,7 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
         weak_power_state = false;
     }
 
-    std::cout<<"u:"<<total_u<<", k:"<< k <<",weak state:"<<weak_power_state<<std::endl;
+    // std::cout<<"a:"<<no_g_acc[2]<<" u:"<<total_u<<", k:"<< k <<",weak state:"<<weak_power_state<<std::endl;
 
     if(weak_power_state != pre_state){
         if(weak_power_state){
