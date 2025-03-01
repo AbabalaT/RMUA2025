@@ -1,7 +1,6 @@
 //
 // Created by bismarck on 12/11/22.
 //
-#define USE_CUSTOM_LASER2SCAN
 
 #include <cmath>
 #include <iostream>
@@ -29,9 +28,9 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
-#include "MahonyAHRS.hpp"
-
 #include <std_msgs/Float32MultiArray.h>
+
+#include <Eigen/Dense>
 
 tf2::Quaternion ned2enu_quat;
 
@@ -47,6 +46,8 @@ int initialized = 0;
 int start_seq = 40;
 
 ros::Time imu_stamp;
+ros::Time gps_stamp;
+
 tf2_ros::Buffer tfBuffer;
 
 ros::Publisher imu_now_pub;
@@ -58,6 +59,7 @@ ros::Publisher pcl_pub;
 ros::Publisher ahrs_pub;
 ros::Publisher uwb_map_pub;
 ros::Publisher acc_pub;
+ros::Publisher sat_odom_pub;
 
 std::ofstream outFile;
 
@@ -69,6 +71,89 @@ typedef struct
 } Quaternion;
 
 float mahony_quaternion[4];
+
+class KalmanFilter {
+public:
+    KalmanFilter(double process_noise, double measurement_noise, double dt = 0.01) {
+        this->dt = dt;
+
+        // Initialize state vector [position, velocity]
+        x = Eigen::Vector2d(0.0, 0.0);  // [position, velocity]
+
+        // Initial covariance matrix (large initial uncertainty in position and velocity)
+        P = Eigen::Matrix2d::Identity() * 100;
+
+        // State transition matrix A (constant velocity model)
+        A << 1, dt,
+             0, 1;
+
+        // Control input matrix B (acceleration affects position and velocity)
+        B << 0.5 * dt * dt,
+             dt;
+
+        // Measurement matrix H (we only measure position)
+        H = Eigen::MatrixXd(1,2);
+        H << 1, 0;
+
+        // Measurement noise covariance (position measurement noise < 0.1m)
+        R = Eigen::MatrixXd(1, 1);
+
+        R(0, 0) = 0.1 * 0.1;  // Position noise: 0.1m squared
+
+        // Process noise covariance (based on real acceleration < 10 m/s^2 and max velocity 30m/s)
+        Q = Eigen::Matrix2d::Zero();
+        Q(0, 0) = 10 * 10;   // Position noise (in meters)
+        Q(0, 1) = 10;        // Cross-term for position and velocity
+        Q(1, 0) = 10;        // Cross-term for position and velocity
+        Q(1, 1) = 10;        // Velocity noise (in meters per second)
+    }
+
+    // Predict step of the Kalman filter
+    void predict(double acceleration) {
+        // Predict the next state
+        x = A * x + B * acceleration;  // x = A * x + B * u
+
+        // Update the covariance
+        P = A * P * A.transpose() + Q;
+    }
+
+    // Update step of the Kalman filter (using position measurement)
+    void update(double position_measurement) {
+        // Measurement residual
+        Eigen::VectorXd y = Eigen::VectorXd(1);
+
+        y(0) = position_measurement - x.x();
+
+        // Measurement uncertainty
+        Eigen::MatrixXd S = H * P * H.transpose() + R;
+
+        // Kalman gain
+        Eigen::MatrixXd K = P * H.transpose() * S.inverse();
+
+        // Update the state estimate
+        x = x + K * y;
+
+        // Update the covariance estimate
+        P = P - K * H * P;
+    }
+
+    // Get the current state (position, velocity)
+    Eigen::Vector2d getState() const {
+        return x;
+    }
+
+private:
+    double dt;        // Time step (100Hz -> 0.01s)
+    Eigen::Vector2d x;      // State vector [position, velocity]
+    Eigen::Matrix2d P;      // Covariance matrix
+    Eigen::Matrix2d A;      // State transition matrix
+    Eigen::Vector2d B;      // Control input matrix
+    Eigen::MatrixXd H;      // Measurement matrix
+    Eigen::MatrixXd Q;      // Process noise covariance
+    Eigen::MatrixXd R;      // Measurement noise covariance
+};
+
+std::vector<KalmanFilter> kalman_filters;
 
 Quaternion multiply_quaternion(Quaternion* q1, Quaternion* q2)
 {
@@ -107,7 +192,6 @@ Quaternion quaternion_conjugate(Quaternion q)
     return result;
 }
 
-// Function to rotate a vector by a quaternion
 void rotateVectorByQuaternion(Quaternion q, float v[3], float result[3])
 {
     // Convert the vector into a quaternion with w = 0
@@ -169,7 +253,6 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     nav_msgs::Odometry odom_msg;
 
-
     odom_msg.header.stamp = ros::Time::now();
     odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
@@ -202,7 +285,7 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     odom_msg.pose.pose.orientation.z = q_measured.z;
     odom_msg.pose.pose.orientation.w = q_measured.w;
     real_pose_pub.publish(odom_msg);
-    //    odom_pub.publish(odom_msg);
+    //odom_pub.publish(odom_msg);//use real to debug
     odom_msg.header.frame_id = "map_odom";
     real_map_pub.publish(odom_msg);
 
@@ -210,15 +293,17 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     new_point.x = odom_msg.pose.pose.position.x;
     new_point.y = odom_msg.pose.pose.position.y;
     new_point.z = odom_msg.pose.pose.position.z;
+
     // route_cloud->points.push_back(new_point);
+
     if(rc_channel[5] < -100){
       outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
-    //   std::cout<<rc_channel[5]<<std::endl;
     }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
+    gps_stamp = msg->header.stamp;
     nav_msgs::Odometry odom_msg;
     odom_msg.header.stamp = msg->header.stamp;
     odom_msg.header.frame_id = "map";
@@ -227,17 +312,13 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     odom_msg.pose.pose.position.x = msg->pose.position.y;
     odom_msg.pose.pose.position.y = msg->pose.position.x;
     odom_msg.pose.pose.position.z = -msg->pose.position.z;
-    odom_msg.pose.pose.orientation.x = msg->pose.orientation.y;
-    odom_msg.pose.pose.orientation.y = msg->pose.orientation.x;
-    odom_msg.pose.pose.orientation.z = -msg->pose.orientation.z;
-    odom_msg.pose.pose.orientation.w = msg->pose.orientation.w;
 
     Quaternion q_measure;
 
-    q_measure.w = odom_msg.pose.pose.orientation.w;
-    q_measure.x = odom_msg.pose.pose.orientation.x;
-    q_measure.y = odom_msg.pose.pose.orientation.y;
-    q_measure.z = odom_msg.pose.pose.orientation.z;
+    q_measure.w = msg->pose.orientation.w;
+    q_measure.x = msg->pose.orientation.y;
+    q_measure.y = msg->pose.orientation.x;
+    q_measure.z = -msg->pose.orientation.z;
 
     Quaternion q_measured = body_axis_z(q_measure, 3.14159265359 / 2.0f);
 
@@ -262,18 +343,11 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     odom_msg.pose.covariance[28] = conv_2;
     odom_msg.pose.covariance[35] = conv_2;
 
-    //    odom_msg.twist.twist.linear.x = 0.0;
-    //    odom_msg.twist.twist.linear.y = 0.0;
-    //    odom_msg.twist.twist.linear.z = 0.0;
-    //    odom_msg.twist.twist.angular.x = 0.0;
-    //    odom_msg.twist.twist.angular.y = 0.0;
-    //    odom_msg.twist.twist.angular.z = 0.0;
-
     odom_pub.publish(odom_msg);
 
-    odom_msg.pose.covariance[0] = 0.002;
-    odom_msg.pose.covariance[7] = 0.002;
-    odom_msg.pose.covariance[14] = 0.002;
+    odom_msg.pose.covariance[0] = 0.01;
+    odom_msg.pose.covariance[7] = 0.01;
+    odom_msg.pose.covariance[14] = 0.01;
 
     odom_msg.pose.covariance[21] = 0.0001;
     odom_msg.pose.covariance[28] = 0.0001;
@@ -281,6 +355,10 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
     odom_msg.header.frame_id = "map_odom";
     uwb_map_pub.publish(odom_msg);
+
+    kalman_filters[0].update(odom_msg.pose.pose.position.x);
+    kalman_filters[1].update(odom_msg.pose.pose.position.y);
+    kalman_filters[2].update(odom_msg.pose.pose.position.z);
 }
 
 double zero[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -290,6 +368,7 @@ int imu_cnt = -99;
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
     imu_stamp = ros::Time::now();
+
     sensor_msgs::Imu new_msg = *msg;
     new_msg.header.frame_id = "base_link";
 
@@ -299,10 +378,13 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     q_measure.y = new_msg.orientation.x;
     q_measure.z = -new_msg.orientation.z;
 
-    new_msg.orientation.x = q_measure.x;
-    new_msg.orientation.y = q_measure.y;
-    new_msg.orientation.z = q_measure.z;
-    new_msg.orientation.w = q_measure.w;
+    Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
+    world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
+
+    new_msg.orientation.x = world_quat.x;
+    new_msg.orientation.y = world_quat.y;
+    new_msg.orientation.z = world_quat.z;
+    new_msg.orientation.w = world_quat.w;
 
     static double conv_11 = 0.0;
     static double conv_12 = 0.0;
@@ -316,52 +398,56 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
     static double easy_cnt = 0.0;
 
-    new_msg.angular_velocity_covariance[0] = conv_21;
-    new_msg.angular_velocity_covariance[4] = conv_22;
-    new_msg.angular_velocity_covariance[8] = conv_23;
+    if (imu_cnt > 300)
+    {
+        new_msg.angular_velocity_covariance[0] = conv_21;
+        new_msg.angular_velocity_covariance[4] = conv_22;
+        new_msg.angular_velocity_covariance[8] = conv_23;
 
-    new_msg.angular_velocity_covariance[1] = conv_3;
-    new_msg.angular_velocity_covariance[2] = conv_3;
-    new_msg.angular_velocity_covariance[3] = conv_3;
-    new_msg.angular_velocity_covariance[5] = conv_3;
-    new_msg.angular_velocity_covariance[6] = conv_3;
-    new_msg.angular_velocity_covariance[7] = conv_3;
+        new_msg.angular_velocity_covariance[1] = conv_3;
+        new_msg.angular_velocity_covariance[2] = conv_3;
+        new_msg.angular_velocity_covariance[3] = conv_3;
+        new_msg.angular_velocity_covariance[5] = conv_3;
+        new_msg.angular_velocity_covariance[6] = conv_3;
+        new_msg.angular_velocity_covariance[7] = conv_3;
 
-    new_msg.linear_acceleration_covariance[0] = conv_11;
-    new_msg.linear_acceleration_covariance[4] = conv_12;
-    new_msg.linear_acceleration_covariance[8] = conv_13;
+        new_msg.linear_acceleration_covariance[0] = conv_11;
+        new_msg.linear_acceleration_covariance[4] = conv_12;
+        new_msg.linear_acceleration_covariance[8] = conv_13;
 
-    new_msg.linear_acceleration_covariance[1] = conv_4;
-    new_msg.linear_acceleration_covariance[2] = conv_4;
-    new_msg.linear_acceleration_covariance[3] = conv_4;
-    new_msg.linear_acceleration_covariance[5] = conv_4;
-    new_msg.linear_acceleration_covariance[6] = conv_4;
-    new_msg.linear_acceleration_covariance[7] = conv_4;
-
+        new_msg.linear_acceleration_covariance[1] = conv_4;
+        new_msg.linear_acceleration_covariance[2] = conv_4;
+        new_msg.linear_acceleration_covariance[3] = conv_4;
+        new_msg.linear_acceleration_covariance[5] = conv_4;
+        new_msg.linear_acceleration_covariance[6] = conv_4;
+        new_msg.linear_acceleration_covariance[7] = conv_4;
+    }
+    //get world acc
     tf2::Quaternion world_to_body_quat(new_msg.orientation.x, new_msg.orientation.y, new_msg.orientation.z,
                                        new_msg.orientation.w);
-    tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
-    tf2::Vector3 acc_body(new_msg.linear_acceleration.x, new_msg.linear_acceleration.y, new_msg.linear_acceleration.z);
 
+    tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
+    tf2::Vector3 acc_body(new_msg.linear_acceleration.x, -new_msg.linear_acceleration.y, -new_msg.linear_acceleration.z);
     tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
 
     float acc_array[3] = {
         static_cast<float>(acc_world.x()), static_cast<float>(acc_world.y()), static_cast<float>(acc_world.z())
     };
+
     if (imu_cnt > 0)
     {
-        acc_world.setZ(acc_world.z() + zero[6]);
-    }
-
+        acc_world.setZ(acc_world.z() - 9.806);
+    }//clear gravity
 
     acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
 
     new_msg.linear_acceleration.x = acc_body.x();
-    new_msg.linear_acceleration.y = -acc_body.y();
-    new_msg.linear_acceleration.z = -acc_body.z();
+    new_msg.linear_acceleration.y = acc_body.y();
+    new_msg.linear_acceleration.z = acc_body.z();
 
     new_msg.angular_velocity.y = -new_msg.angular_velocity.y;
     new_msg.angular_velocity.z = -new_msg.angular_velocity.z;
+
     if (imu_cnt <= 0)
     {
         std::cout<<"imu_cnt"<<imu_cnt<<std::endl;
@@ -375,7 +461,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
         }
         imu_cnt = imu_cnt + 1;
         return;
-    }
+    }//gravity estimate
 
     if (imu_cnt < 301)
     {
@@ -416,21 +502,69 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
         }
         imu_cnt = imu_cnt + 1;
         return;
-    }
-    new_msg.linear_acceleration.x += zero[0];
-    new_msg.linear_acceleration.y += zero[1];
-    new_msg.linear_acceleration.z += zero[2];
-    new_msg.angular_velocity.x += zero[3];
-    new_msg.angular_velocity.y += zero[4];
-    new_msg.angular_velocity.z += zero[5];
+    }//zero estimate
+
+    // new_msg.linear_acceleration.x += zero[0];
+    // new_msg.linear_acceleration.y += zero[1];
+    // new_msg.linear_acceleration.z += zero[2];
+    // new_msg.angular_velocity.x += zero[3];
+    // new_msg.angular_velocity.y += zero[4];
+    // new_msg.angular_velocity.z += zero[5];
 
     imu_now_pub.publish(new_msg);
-    Quaternion q_measure_world = multiply_quaternion(&world_quat_no_rotation, &q_measure);
-    world_quat = body_axis_z(q_measure_world, 3.14159265359 / 2.0f);
 
     std_msgs::Float32MultiArray acc_msg;
     acc_msg.data.assign(acc_array, acc_array + 3);
     acc_pub.publish(acc_msg);
+
+    // std::cout<<"acc world z"<< acc_world.z()<<std::endl;
+
+    kalman_filters[0].predict(acc_world.x());
+    kalman_filters[1].predict(acc_world.y());
+    kalman_filters[2].predict(acc_world.z());
+
+    auto state_x = kalman_filters[0].getState();
+    auto state_y = kalman_filters[1].getState();
+    auto state_z = kalman_filters[2].getState();
+
+    //std::cout << "x: " << state_x(0)<<", "<< state_x(1) << " y: " << state_y(0)<<", "<< state_y(1) << " z: " << state_z(0)<<", "<< state_z(1) << std::endl;
+    nav_msgs::Odometry odom_msg;
+    odom_msg.header.stamp = ros::Time::now();
+    odom_msg.header.frame_id = "map";
+    odom_msg.child_frame_id = "base_link";
+
+    odom_msg.pose.pose.position.x = state_x(0);
+    odom_msg.pose.pose.position.y = state_y(0);
+    odom_msg.pose.pose.position.z = state_z(0);
+
+    tf2::Vector3 vel_world(state_x(1), state_y(1), state_z(1));
+    tf2::Vector3 vel_body = tf2::quatRotate(world_to_body_quat, vel_world);
+
+    odom_msg.twist.twist.linear.x = vel_body.x();
+    odom_msg.twist.twist.linear.y = vel_body.y();
+    odom_msg.twist.twist.linear.z = vel_body.z();
+
+    odom_msg.pose.pose.orientation.x = world_quat.x;
+    odom_msg.pose.pose.orientation.y = world_quat.y;
+    odom_msg.pose.pose.orientation.z = world_quat.z;
+    odom_msg.pose.pose.orientation.w = world_quat.w;
+
+    sat_odom_pub.publish(odom_msg);
+
+    static tf2_ros::TransformBroadcaster br;
+    geometry_msgs::TransformStamped trans;
+
+    trans.header.frame_id = "map";
+    trans.child_frame_id = "base_link";
+    trans.header.stamp = ros::Time::now();
+    trans.transform.rotation.x = world_quat.x;
+    trans.transform.rotation.y = world_quat.y;
+    trans.transform.rotation.z = world_quat.z;
+    trans.transform.rotation.w = world_quat.w;
+    trans.transform.translation.x = odom_msg.pose.pose.position.x;
+    trans.transform.translation.y = odom_msg.pose.pose.position.y;
+    trans.transform.translation.z = odom_msg.pose.pose.position.z;
+    br.sendTransform(trans);
 }
 
 void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -526,6 +660,8 @@ int main(int argc, char** argv)
     ahrs_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/ahrs", 10);
     uwb_map_pub = pnh.advertise<nav_msgs::Odometry>("/ekf/uwb2", 10);
     acc_pub = pnh.advertise<std_msgs::Float32MultiArray>("/exe/output_acc", 10);
+    sat_odom_pub = pnh.advertise<nav_msgs::Odometry>("/odometry/filtered", 10);
+
     rc_channel[5] = 100.0;
     mahony_quaternion[0] = 1.0;
     mahony_quaternion[1] = 0.0;
@@ -533,6 +669,11 @@ int main(int argc, char** argv)
     mahony_quaternion[3] = 0.0;
     // pcl::io::loadPCDFile<pcl::PointXYZ>("/home/tc/route.pcd", *route_cloud);
     outFile.open("/home/tc/route_point.route", std::ios::app);
+    std::cout<<"init filters"<<std::endl;
+    kalman_filters.push_back(KalmanFilter(1e-5, 0.1));
+    kalman_filters.push_back(KalmanFilter(1e-5, 0.1));
+    kalman_filters.push_back(KalmanFilter(1e-5, 0.1));
+    std::cout<<"init filters ok"<<std::endl;
     ros::spin();
     // route_cloud->width = route_cloud->points.size();
     // route_cloud->height = 1;
