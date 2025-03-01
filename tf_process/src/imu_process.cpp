@@ -72,85 +72,98 @@ typedef struct
 
 float mahony_quaternion[4];
 
+typedef struct
+{
+    // 滤波器系数
+    double b0, b1, b2;
+    double a1, a2;
+
+    // 滤波器状态
+    double x1, x2; // 输入状态
+    double y1, y2; // 输出状态
+} ButterworthFilter;
+
+// 初始化巴特沃斯低通滤波器
+void initButterworthFilter(ButterworthFilter* filter, double sampleRate, double cutoffFreq)
+{
+    double omega_c = 2.0 * 3.14159265359 * cutoffFreq / sampleRate;
+    double alpha = sin(omega_c) / 2.0;
+
+    // 计算滤波器系数
+    double b0 = (1 - cos(omega_c)) / 2;
+    double b1 = 1 - cos(omega_c);
+    double b2 = (1 - cos(omega_c)) / 2;
+    double a0 = 1 + alpha;
+    double a1 = -2 * cos(omega_c);
+    double a2 = 1 - alpha;
+
+    // 归一化系数
+    filter->b0 = b0 / a0;
+    filter->b1 = b1 / a0;
+    filter->b2 = b2 / a0;
+    filter->a1 = a1 / a0;
+    filter->a2 = a2 / a0;
+
+    // 初始化状态
+    filter->x1 = 0;
+    filter->x2 = 0;
+    filter->y1 = 0;
+    filter->y2 = 0;
+}
+
+// 应用滤波器
+double applyButterworthFilter(ButterworthFilter* filter, double input)
+{
+    // 计算输出
+    double output = filter->b0 * input + filter->b1 * filter->x1 + filter->b2 * filter->x2 - filter->a1 * filter->y1 -
+        filter->a2 * filter->y2;
+
+    // 更新状态
+    filter->x2 = filter->x1;
+    filter->x1 = input;
+    filter->y2 = filter->y1;
+    filter->y1 = output;
+
+    return output;
+}
+
 class KalmanFilter {
 public:
     KalmanFilter(double process_noise, double measurement_noise, double dt = 0.01) {
+        initButterworthFilter(&gps_measure_filter, 10.0, 2.5);
+        initButterworthFilter(&acc_filter, 100.0, 25.0);
+
+        initButterworthFilter(&vel_filter, 110.0, 20.0);
+        initButterworthFilter(&pos_filter, 110.0, 25.0);
         this->dt = dt;
-
-        // Initialize state vector [position, velocity]
-        x = Eigen::Vector2d(0.0, 0.0);  // [position, velocity]
-
-        // Initial covariance matrix (large initial uncertainty in position and velocity)
-        P = Eigen::Matrix2d::Identity() * 100;
-
-        // State transition matrix A (constant velocity model)
-        A << 1, dt,
-             0, 1;
-
-        // Control input matrix B (acceleration affects position and velocity)
-        B << 0.5 * dt * dt,
-             dt;
-
-        // Measurement matrix H (we only measure position)
-        H = Eigen::MatrixXd(1,2);
-        H << 1, 0;
-
-        // Measurement noise covariance (position measurement noise < 0.1m)
-        R = Eigen::MatrixXd(1, 1);
-
-        R(0, 0) = 0.1 * 0.1;  // Position noise: 0.1m squared
-
-        // Process noise covariance (based on real acceleration < 10 m/s^2 and max velocity 30m/s)
-        Q = Eigen::Matrix2d::Zero();
-        Q(0, 0) = 10 * 10;   // Position noise (in meters)
-        Q(0, 1) = 10;        // Cross-term for position and velocity
-        Q(1, 0) = 10;        // Cross-term for position and velocity
-        Q(1, 1) = 10;        // Velocity noise (in meters per second)
     }
 
-    // Predict step of the Kalman filter
     void predict(double acceleration) {
-        // Predict the next state
-        x = A * x + B * acceleration;  // x = A * x + B * u
-
-        // Update the covariance
-        P = A * P * A.transpose() + Q;
+        // acceleration = applyButterworthFilter(&acc_filter, acceleration);
+        x(1) = applyButterworthFilter(&vel_filter, x(1) + acceleration * dt);
+        x(0) = applyButterworthFilter(&pos_filter, x(0) + x(1) * dt + 0.5 * acceleration * dt * dt);
     }
 
-    // Update step of the Kalman filter (using position measurement)
     void update(double position_measurement) {
-        // Measurement residual
-        Eigen::VectorXd y = Eigen::VectorXd(1);
-
-        y(0) = position_measurement - x.x();
-
-        // Measurement uncertainty
-        Eigen::MatrixXd S = H * P * H.transpose() + R;
-
-        // Kalman gain
-        Eigen::MatrixXd K = P * H.transpose() * S.inverse();
-
-        // Update the state estimate
-        x = x + K * y;
-
-        // Update the covariance estimate
-        P = P - K * H * P;
+        // position_measurement = applyButterworthFilter(&gps_measure_filter, position_measurement);
+        x(0) = applyButterworthFilter(&pos_filter, position_measurement);
+        x(1) = applyButterworthFilter(&vel_filter, (x(0) - pre_measurement) / 0.1);
+        pre_measurement = x(0);
     }
 
-    // Get the current state (position, velocity)
     Eigen::Vector2d getState() const {
         return x;
     }
 
 private:
-    double dt;        // Time step (100Hz -> 0.01s)
-    Eigen::Vector2d x;      // State vector [position, velocity]
-    Eigen::Matrix2d P;      // Covariance matrix
-    Eigen::Matrix2d A;      // State transition matrix
-    Eigen::Vector2d B;      // Control input matrix
-    Eigen::MatrixXd H;      // Measurement matrix
-    Eigen::MatrixXd Q;      // Process noise covariance
-    Eigen::MatrixXd R;      // Measurement noise covariance
+    ButterworthFilter gps_measure_filter;
+    ButterworthFilter acc_filter;
+    ButterworthFilter vel_filter;
+    ButterworthFilter pos_filter;
+
+    double pre_measurement;
+    double dt;
+    Eigen::Vector2d x;
 };
 
 std::vector<KalmanFilter> kalman_filters;
@@ -354,6 +367,7 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     odom_msg.pose.covariance[35] = 0.0001;
 
     odom_msg.header.frame_id = "map_odom";
+    odom_msg.header.stamp = ros::Time::now();
     uwb_map_pub.publish(odom_msg);
 
     kalman_filters[0].update(odom_msg.pose.pose.position.x);
@@ -436,7 +450,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
     if (imu_cnt > 0)
     {
-        acc_world.setZ(acc_world.z() - 9.806);
+        acc_world.setZ(acc_world.z() - 9.80);
     }//clear gravity
 
     acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
@@ -527,7 +541,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     auto state_y = kalman_filters[1].getState();
     auto state_z = kalman_filters[2].getState();
 
-    //std::cout << "x: " << state_x(0)<<", "<< state_x(1) << " y: " << state_y(0)<<", "<< state_y(1) << " z: " << state_z(0)<<", "<< state_z(1) << std::endl;
+    std::cout << "x: " << state_x(0)<<", "<< state_x(1) << " y: " << state_y(0)<<", "<< state_y(1) << " z: " << state_z(0)<<", "<< state_z(1) << std::endl;
     nav_msgs::Odometry odom_msg;
     odom_msg.header.stamp = ros::Time::now();
     odom_msg.header.frame_id = "map";
@@ -538,7 +552,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     odom_msg.pose.pose.position.z = state_z(0);
 
     tf2::Vector3 vel_world(state_x(1), state_y(1), state_z(1));
-    tf2::Vector3 vel_body = tf2::quatRotate(world_to_body_quat, vel_world);
+    tf2::Vector3 vel_body = tf2::quatRotate(body_to_world_quat, vel_world);
 
     odom_msg.twist.twist.linear.x = vel_body.x();
     odom_msg.twist.twist.linear.y = vel_body.y();
