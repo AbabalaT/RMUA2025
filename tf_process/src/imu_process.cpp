@@ -271,13 +271,13 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
     odom_pub.publish(odom_msg);
 
-    odom_msg.pose.covariance[0] = 0.01;
-    odom_msg.pose.covariance[7] = 0.01;
-    odom_msg.pose.covariance[14] = 0.01;
+    odom_msg.pose.covariance[0] = 0.002;
+    odom_msg.pose.covariance[7] = 0.002;
+    odom_msg.pose.covariance[14] = 0.002;
 
-    odom_msg.pose.covariance[21] = 0.001;
-    odom_msg.pose.covariance[28] = 0.001;
-    odom_msg.pose.covariance[35] = 0.001;
+    odom_msg.pose.covariance[21] = 0.0001;
+    odom_msg.pose.covariance[28] = 0.0001;
+    odom_msg.pose.covariance[35] = 0.0001;
 
     odom_msg.header.frame_id = "map_odom";
     uwb_map_pub.publish(odom_msg);

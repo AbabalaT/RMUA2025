@@ -1,8 +1,8 @@
 <launch>
-    <node pkg="robot_localization" type="ukf_localization_node" name="ukf_localization">
+    <node pkg="robot_localization" type="ukf_localization_node" name="ukf_localization" output="screen">
 
-      <param name="frequency" value="100"/>
-      <param name="sensor_timeout" value="100000000"/>
+      <param name="frequency" value="100.0"/>
+      <param name="sensor_timeout" value="100000000.0"/>
       <param name="two_d_mode" value="false"/>
       <param name="publish_tf" value="true"/>
       <param name="odom_frame" value="map_odom"/>
