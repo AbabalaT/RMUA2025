@@ -72,7 +72,7 @@ float point_distance(const float p1[], const float p2[])
     {
         dist += (p2[i] - p1[i]) * (p2[i] - p1[i]);
     }
-    std::cout<<"distance: "<<sqrt(dist)<<std::endl;
+    //std::cout<<"distance: "<<sqrt(dist)<<std::endl;
     return sqrt(dist);
 }
 

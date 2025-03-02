@@ -175,6 +175,7 @@ Panels:
         - /drone411/Planning1/drone_path1
         - /drone411/Mapping1/map inflate1
         - /MovingObstaclesJoystick01/PredictedTrajectories1
+        - /Path1
         - /Odometry2
         - /Odometry2/Shape1
       Splitter Ratio: 0.4771505296230316
@@ -371,8 +372,8 @@ Visualization Manager:
             - Alpha: 1
               Autocompute Intensity Bounds: true
               Autocompute Value Bounds:
-                Max Value: 15.524999618530273
-                Min Value: 0.02500000037252903
+                Max Value: -9999
+                Min Value: 9999
                 Value: true
               Axis: Z
               Channel Name: intensity
@@ -5936,7 +5937,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
-      Enabled: false
+      Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -5955,7 +5956,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /exe/path
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -6084,7 +6085,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 9.6891450881958
+      Distance: 23.203903198242188
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -6092,17 +6093,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.11716294288635254
-        Y: 0.1410427689552307
-        Z: 1.441471226826252e-06
+        X: 0
+        Y: 0
+        Z: 0
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3347996473312378
+      Pitch: 0.525397777557373
       Target Frame: base_link
-      Yaw: 2.4790847301483154
+      Yaw: 1.135124683380127
     Saved:
       - Class: rviz/FPS
         Enable Stereo Rendering:
