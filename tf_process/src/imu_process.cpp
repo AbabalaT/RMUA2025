@@ -65,6 +65,159 @@ std::ofstream outFile;
 
 float init_pose_x, init_pose_y, init_pose_z;
 
+float point_distance(const float p1[], const float p2[])
+{
+    float dist = 0.0;
+    for (int i = 0; i < 3; i++)
+    {
+        dist += (p2[i] - p1[i]) * (p2[i] - p1[i]);
+    }
+    std::cout<<"distance: "<<sqrt(dist)<<std::endl;
+    return sqrt(dist);
+}
+
+void get_orientation_by_pos(float& pose_x, float& pose_y, float& pose_z,
+        float& quat_w, float& quat_x, float& quat_y, float& quat_z){
+    float possible_pose[3];
+    float require_pose[3];
+    require_pose[0] = pose_x;
+    require_pose[1] = pose_y;
+    require_pose[2] = pose_z;
+
+    possible_pose[0] = 518.5;
+    possible_pose[1] = 548.0;
+    possible_pose[2] = 30.4;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = 0.8643983602523804;
+        quat_w = 0.5028076171875;
+        return;
+    }
+
+    possible_pose[0] = 401;
+    possible_pose[1] = 263.3;
+    possible_pose[2] = -0.02;
+    if(point_distance(require_pose, possible_pose) < 25.0){
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = 0.9949634075164795;
+        quat_w = 0.10023844242095947;
+        return;
+    }
+
+    possible_pose[0] = 286.764332431464;
+    possible_pose[1] = 142.55716002076377;
+    possible_pose[2] = 8.072717666625977;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = 0.7445744276046753;
+        quat_w = 0.6675394773483276;
+        return;
+    }
+
+    possible_pose[0] = 0.0;
+    possible_pose[1] = 0.0;
+    possible_pose[2] = 0.0;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = 0.7053244709968567;
+        quat_w = 0.7088846564292908;
+        return;
+    }
+
+    possible_pose[0] = -288.20;
+    possible_pose[1] = 0.31808;
+    possible_pose[2] = 3.57;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = 0.6195170283317566;
+        quat_w = 0.784983217716217;
+        return;
+    }
+
+    possible_pose[0] = -731.47;
+    possible_pose[1] = 713.26;
+    possible_pose[2] = 14.86;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = 0.12704959511756897;
+        quat_w = 0.991896390914917;
+        return;
+    }
+
+    possible_pose[0] = -676.15;
+    possible_pose[1] = 784.731;
+    possible_pose[2] = 2.915;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = -0.5142592787742615;
+        quat_w = 0.8576347231864929;
+        return;
+    }
+
+    possible_pose[0] = -485.96;
+    possible_pose[1] = 1033.42;
+    possible_pose[2] = 57.4384;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = -0.022274643182754517;
+        quat_w = 0.9997519254684448;
+    }
+
+    possible_pose[0] = -424.011;
+    possible_pose[1] = 1176.75;
+    possible_pose[2] = 77.45;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = -0.6547228097915649;
+        quat_w = 0.7558690309524536;
+    }
+
+    possible_pose[0] = -103.57;
+    possible_pose[1] = 1351.24;
+    possible_pose[2] = 7.438;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = -0.6877499;
+        quat_w = 0.7259476780891418;
+    }
+
+    possible_pose[0] = 153.65715255718112;
+    possible_pose[1] = 1327.5052453297249;
+    possible_pose[2] = 35.30732774734497;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = -0.7883210182189941;
+        quat_w = 0.6152640581130981;
+    }
+
+    possible_pose[0] = 539.6709;
+    possible_pose[1] = 677.5449;
+    possible_pose[2] = 47.6920;
+    if(point_distance(require_pose, possible_pose) < 25.0){        
+        quat_x = 0.0;
+        quat_y = 0.0;
+        quat_z = -0.9067946672439575;
+        quat_w = 0.42157256603240967;
+    }
+
+    quat_w = 1.0;
+    quat_x = 0.0;
+    quat_y = 0.0;
+    quat_z = 0.0;
+    return;
+}
+
 float end_pose_x, end_pose_y, end_pose_z;
 
 typedef struct
@@ -393,7 +546,7 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 double zero[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
-int imu_cnt = -99;
+int imu_cnt = 301;
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
@@ -631,14 +784,18 @@ void project2plane_callback(const ros::TimerEvent&)
     trans.header.frame_id = "map";
     trans.child_frame_id = "real_end";
     trans.header.stamp = ros::Time::now();
+
+    trans.transform.translation.x = end_pose_x;
+    trans.transform.translation.y = end_pose_y;
+    trans.transform.translation.z = end_pose_z;
+
+    get_orientation_by_pos(end_pose_x, end_pose_y, end_pose_z, end_quat.w, end_quat.x, end_quat.y, end_quat.z);
+
     trans.transform.rotation.x = end_quat.x;
     trans.transform.rotation.y = end_quat.y;
     trans.transform.rotation.z = end_quat.z;
     trans.transform.rotation.w = end_quat.w;
 
-    trans.transform.translation.x = end_pose_x;
-    trans.transform.translation.y = end_pose_y;
-    trans.transform.translation.z = end_pose_z;
     br.sendTransform(trans);
 
     trans.header.frame_id = "real_start";
@@ -649,7 +806,7 @@ void project2plane_callback(const ros::TimerEvent&)
     trans.transform.rotation.z = 0.0;
     trans.transform.rotation.w = 1.0;
 
-    trans.transform.translation.x = -5;
+    trans.transform.translation.x = -10.0;
     trans.transform.translation.y = 0;
     trans.transform.translation.z = 1.5;
     br.sendTransform(trans);
@@ -662,7 +819,7 @@ void project2plane_callback(const ros::TimerEvent&)
     trans.transform.rotation.z = 0.0;
     trans.transform.rotation.w = 1.0;
 
-    trans.transform.translation.x = -5;
+    trans.transform.translation.x = -10.0;
     trans.transform.translation.y = 0;
     trans.transform.translation.z = 1.5;
     br.sendTransform(trans);
@@ -711,7 +868,7 @@ int main(int argc, char** argv)
     ros::NodeHandle pnh("~");
     tf2_ros::TransformListener tfListener(tfBuffer);
 
-    ros::Timer timer1 = pnh.createTimer(ros::Duration(0.1), project2plane_callback);
+    ros::Timer timer1 = pnh.createTimer(ros::Duration(1.0), project2plane_callback);
 
     ros::Subscriber imu_sub = pnh.subscribe("/airsim_node/drone_1/imu/imu", 10, imuCallback);
     ros::Subscriber pose_sub = pnh.subscribe("/airsim_node/drone_1/gps", 10, poseCallback);

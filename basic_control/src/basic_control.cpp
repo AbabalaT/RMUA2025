@@ -1022,16 +1022,29 @@ float pid_pos_z(float target, float real)
 
     result = pos_pid_mat[2][0] * target + pos_pid_mat[2][1] * (error + pos_pid_mat[
         2][2] * sum * 0.01 + pos_pid_mat[2][3] * d_out / 0.01);
+    
+    if(weak_power_state){
+        if (result > 3.0f)
+        {
+            result = 3.0f;
+        }
 
-    if (result > 15.0f)
-    {
-        result = 15.0f;
+        if (result < -6.0f)
+        {
+            result = -6.0f;
+        }
+    }else{
+        if (result > 6.0f)
+        {
+            result = 6.0f;
+        }
+    
+        if (result < -4.0f)
+        {
+            result = -4.0f;
+        }
     }
-
-    if (result < -15.0f)
-    {
-        result = -15.0f;
-    }
+    
 
     return result;
 }
@@ -1936,7 +1949,7 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
 
     if(weak_power_state){
         if(total_u < 2.86){//min than 2.86
-            weak_power_state = (k>0.30);
+            weak_power_state = (k>0.25);
         }else{
             weak_power_state = (k>0.25);
         }
@@ -1952,7 +1965,7 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
         weak_power_state = false;
     }
 
-    // std::cout<<"a:"<<no_g_acc[2]<<" u:"<<total_u<<", k:"<< k <<",weak state:"<<weak_power_state<<std::endl;
+    //std::cout<<"a:"<<no_g_acc[2]<<" u:"<<total_u<<", k:"<< k <<",weak state:"<<weak_power_state<<std::endl;
 
     if(weak_power_state != pre_state){
         if(weak_power_state){
@@ -2079,7 +2092,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             if (point_distance(start_pose, measure_world_pos) < 2.0)
             {
                 mission_cnt = mission_cnt+1;
-                if (mission_cnt > 8)
+                if (mission_cnt > 3)
                 {
                     mission_cnt = 0;
                     init_waiting = 2;
@@ -2117,7 +2130,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         //take off detection
         if(mission_step == 3){
-            if (point_distance(target_world_pos, measure_world_pos) < 0.3)
+            if (point_distance(target_world_pos, measure_world_pos) < 0.4)
             {
                 geometry_msgs::TransformStamped base2plane;
                 try
@@ -2158,11 +2171,11 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         if (mission_step == 104)
         {
-            if (point_distance(target_world_pos, measure_world_pos) < 0.3)
+            if (point_distance(target_world_pos, measure_world_pos) < 0.4)
             {
                 target_world_pos[0] = start_by_pose[0];
                 target_world_pos[1] = start_by_pose[1];
-                target_world_pos[2] = start_by_pose[2] + 5.0;
+                target_world_pos[2] = start_by_pose[2] + 8.0;
 
                 tf_cmd[0] = target_world_pos[0];
                 tf_cmd[1] = target_world_pos[1];
@@ -2184,7 +2197,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             return;
         }
         if(mission_step == 105){
-            if (point_distance(target_world_pos, measure_world_pos) < 0.3)
+            if (point_distance(target_world_pos, measure_world_pos) < 0.6)
             {
                 mission_step = 4;
             }
@@ -2262,11 +2275,11 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 mission_path_2.poses.push_back(path_point);
             }
 
-            geometry_msgs::PoseStamped path_point;
-            path_point.pose.position.x = end_pose[0];
-            path_point.pose.position.y = end_pose[1];
-            path_point.pose.position.z = end_pose[2];
-            mission_path_2.poses.push_back(path_point);
+            // geometry_msgs::PoseStamped path_point;
+            // path_point.pose.position.x = end_pose[0];
+            // path_point.pose.position.y = end_pose[1];
+            // path_point.pose.position.z = end_pose[2] + 1.5;
+            // mission_path_2.poses.push_back(path_point);
 
             for (auto point = exe_path2->begin(); point != exe_path2->end(); ++point)
             {
@@ -2285,15 +2298,15 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 mission_path_4.poses.push_back(path_point);
             }
 
-            path_point.pose.position.x = start_pose[0];
-            path_point.pose.position.y = start_pose[1];
-            path_point.pose.position.z = start_pose[2];
-            mission_path_4.poses.push_back(path_point);
+            // path_point.pose.position.x = start_pose[0];
+            // path_point.pose.position.y = start_pose[1];
+            // path_point.pose.position.z = start_pose[2];
+            // mission_path_4.poses.push_back(path_point);
 
             // std_msgs::Float32 limit_msg;
             // limit_msg.data = 3.0;
             // planner_acc_limit_publisher.publish(limit_msg);
-            // limit_msg.data = 12.0;
+            // limit_msg.data = 15.0;
             // planner_acc_limit_publisher.publish(limit_msg);
 
             exe_path_publisher.publish(mission_path_1);
@@ -2311,10 +2324,150 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 target_world_pos[0] = mission_path_2.poses.back().pose.position.x;
                 target_world_pos[1] = mission_path_2.poses.back().pose.position.y + 750.0;
                 target_world_pos[2] = mission_path_2.poses.back().pose.position.z;
+                mission_step = 6001;
+            }
+            return;
+        }
+
+        if(mission_step == 6001){
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            {
+                geometry_msgs::TransformStamped base2plane;
+                try
+                {
+                    base2plane = tfBuffer.lookupTransform("map", "end_by", ros::Time(0));
+                }
+                catch (tf2::TransformException& ex)
+                {
+                    ROS_WARN("Control Get TF ERROR!");
+                    return;
+                }
+                end_by_pose[0] = base2plane.transform.translation.x;
+                end_by_pose[1] = base2plane.transform.translation.y;
+                end_by_pose[2] = base2plane.transform.translation.z;
+
+                target_world_pos[0] = end_by_pose[0];
+                target_world_pos[1] = end_by_pose[1];
+                target_world_pos[2] = end_by_pose[2];
+
+                tf_cmd[0] = target_world_pos[0];
+                tf_cmd[1] = target_world_pos[1];
+                tf_cmd[2] = target_world_pos[2];
+
+                tf_cmd[3] = NAN;
+                tf_cmd[4] = NAN;
+                tf_cmd[5] = NAN;
+                tf_cmd[6] = NAN;
+                tf_cmd[7] = NAN;
+                tf_cmd[8] = NAN;
+
+                tf_cmd[9] = measure_world_pos[3];
+
+                tf_cmd[10] = NAN;
+                tf_cmd[10] = NAN;
+                mission_step = 6002;
+            }
+            return;
+        }
+        if (mission_step == 6002)
+        {
+            target_world_pos[0] = end_by_pose[0];
+            target_world_pos[1] = end_by_pose[1];
+            target_world_pos[2] = end_by_pose[2];
+
+            tf_cmd[0] = target_world_pos[0];
+            tf_cmd[1] = target_world_pos[1];
+            tf_cmd[2] = target_world_pos[2];
+
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            {
+                target_world_pos[0] = end_pose[0];
+                target_world_pos[1] = end_pose[1];
+                target_world_pos[2] = end_pose[2] + 0.5;
+
+                tf_cmd[0] = target_world_pos[0];
+                tf_cmd[1] = target_world_pos[1];
+                tf_cmd[2] = target_world_pos[2];
+
+                tf_cmd[3] = NAN;
+                tf_cmd[4] = NAN;
+                tf_cmd[5] = NAN;
+                tf_cmd[6] = NAN;
+                tf_cmd[7] = NAN;
+                tf_cmd[8] = NAN;
+
+                tf_cmd[9] = measure_world_pos[3];
+
+                tf_cmd[10] = NAN;
+                tf_cmd[10] = NAN;
+                mission_step = 6003;
+            }
+            return;
+        }
+        if (mission_step == 6003)
+        {
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+                target_world_pos[0] = end_by_pose[0];
+                target_world_pos[1] = end_by_pose[1];
+                target_world_pos[2] = end_by_pose[2];
+
+                tf_cmd[0] = target_world_pos[0];
+                tf_cmd[1] = target_world_pos[1];
+                tf_cmd[2] = target_world_pos[2];
+
+                tf_cmd[3] = NAN;
+                tf_cmd[4] = NAN;
+                tf_cmd[5] = NAN;
+                tf_cmd[6] = NAN;
+                tf_cmd[7] = NAN;
+                tf_cmd[8] = NAN;
+
+                tf_cmd[9] = measure_world_pos[3];
+
+                tf_cmd[10] = NAN;
+                tf_cmd[10] = NAN;
+                mission_step = 6004;
+
+                force_strong_power_mode = true;
+                
+                std_msgs::Float32 limit_msg;
+                limit_msg.data = 7.5;
+                planner_acc_limit_publisher.publish(limit_msg);
+                limit_msg.data = 30.0;
+                planner_acc_limit_publisher.publish(limit_msg);
+                
+            }
+            return;
+        }
+        if (mission_step == 6004)
+        {
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            {
+                target_world_pos[0] = end_by_pose[0];
+                target_world_pos[1] = end_by_pose[1];
+                target_world_pos[2] = end_by_pose[2] + 5.0;
+
+                tf_cmd[0] = target_world_pos[0];
+                tf_cmd[1] = target_world_pos[1];
+                tf_cmd[2] = target_world_pos[2];
+
+                tf_cmd[3] = NAN;
+                tf_cmd[4] = NAN;
+                tf_cmd[5] = NAN;
+                tf_cmd[6] = NAN;
+                tf_cmd[7] = NAN;
+                tf_cmd[8] = NAN;
+
+                tf_cmd[9] = measure_world_pos[3];
+
+                tf_cmd[10] = NAN;
+                tf_cmd[10] = NAN;
                 mission_step = 7;
             }
             return;
         }
+
         if(mission_step == 7){
             if (point_distance(measure_world_pos, target_world_pos) < 2.0)
             {
@@ -2323,13 +2476,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 target_world_pos[1] = mission_path_3.poses.back().pose.position.y + 750.0;
                 target_world_pos[2] = mission_path_3.poses.back().pose.position.z;
                 mission_step = 8;
-                force_strong_power_mode = true;
-
-                std_msgs::Float32 limit_msg;
-                limit_msg.data = 7.5;
-                planner_acc_limit_publisher.publish(limit_msg);
-                limit_msg.data = 30.0;
-                planner_acc_limit_publisher.publish(limit_msg);
+                
             }
             return;
         }
@@ -2340,8 +2487,70 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 target_world_pos[0] = mission_path_4.poses.back().pose.position.x;
                 target_world_pos[1] = mission_path_4.poses.back().pose.position.y + 750.0;
                 target_world_pos[2] = mission_path_4.poses.back().pose.position.z;
-                mission_step = 9;
+                mission_step = 8001;
                 force_strong_power_mode = true;
+            }
+            return;
+        }
+        if(mission_step == 8001){
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+
+                target_world_pos[0] = start_by_pose[0];
+                target_world_pos[1] = start_by_pose[1];
+                target_world_pos[2] = start_by_pose[2];
+
+                tf_cmd[0] = target_world_pos[0];
+                tf_cmd[1] = target_world_pos[1];
+                tf_cmd[2] = target_world_pos[2];
+
+                tf_cmd[3] = NAN;
+                tf_cmd[4] = NAN;
+                tf_cmd[5] = NAN;
+                tf_cmd[6] = NAN;
+                tf_cmd[7] = NAN;
+                tf_cmd[8] = NAN;
+
+                tf_cmd[9] = measure_world_pos[3];
+
+                tf_cmd[10] = NAN;
+                tf_cmd[10] = NAN;
+                mission_step = 8002;
+            }
+            return;
+        }
+        if (mission_step == 8002)
+        {
+            target_world_pos[0] = start_by_pose[0];
+            target_world_pos[1] = start_by_pose[1];
+            target_world_pos[2] = start_by_pose[2];
+
+            tf_cmd[0] = target_world_pos[0];
+            tf_cmd[1] = target_world_pos[1];
+            tf_cmd[2] = target_world_pos[2];
+
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+                target_world_pos[0] = start_pose[0];
+                target_world_pos[1] = start_pose[1];
+                target_world_pos[2] = start_pose[2] + 1.5;
+
+                tf_cmd[0] = target_world_pos[0];
+                tf_cmd[1] = target_world_pos[1];
+                tf_cmd[2] = target_world_pos[2];
+
+                tf_cmd[3] = NAN;
+                tf_cmd[4] = NAN;
+                tf_cmd[5] = NAN;
+                tf_cmd[6] = NAN;
+                tf_cmd[7] = NAN;
+                tf_cmd[8] = NAN;
+
+                tf_cmd[9] = measure_world_pos[3];
+
+                tf_cmd[10] = NAN;
+                tf_cmd[10] = NAN;
+                mission_step = 8003;
             }
             return;
         }
