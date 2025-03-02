@@ -2153,6 +2153,18 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 start_by_pose[0] = base2plane.transform.translation.x;
                 start_by_pose[1] = base2plane.transform.translation.y;
                 start_by_pose[2] = base2plane.transform.translation.z;
+                try
+                {
+                    base2plane = tfBuffer.lookupTransform("map", "end_by", ros::Time(0));
+                }
+                catch (tf2::TransformException& ex)
+                {
+                    ROS_WARN("Control Get TF ERROR!");
+                    return;
+                }
+                end_by_pose[0] = base2plane.transform.translation.x;
+                end_by_pose[1] = base2plane.transform.translation.y;
+                end_by_pose[2] = base2plane.transform.translation.z;
 
                 target_world_pos[0] = start_by_pose[0];
                 target_world_pos[1] = start_by_pose[1];
@@ -2336,20 +2348,6 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         if(mission_step == 6001){
             if (point_distance(target_world_pos, measure_world_pos) < 3.0)
             {
-                geometry_msgs::TransformStamped base2plane;
-                try
-                {
-                    base2plane = tfBuffer.lookupTransform("map", "end_by", ros::Time(0));
-                }
-                catch (tf2::TransformException& ex)
-                {
-                    ROS_WARN("Control Get TF ERROR!");
-                    return;
-                }
-                end_by_pose[0] = base2plane.transform.translation.x;
-                end_by_pose[1] = base2plane.transform.translation.y;
-                end_by_pose[2] = base2plane.transform.translation.z;
-
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
                 target_world_pos[2] = end_by_pose[2];
