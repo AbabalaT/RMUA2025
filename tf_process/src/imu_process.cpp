@@ -65,6 +65,8 @@ std::ofstream outFile;
 
 float init_pose_x, init_pose_y, init_pose_z;
 
+float end_pose_x, end_pose_y, end_pose_z;
+
 typedef struct
 {
     float w, x, y, z;
@@ -134,7 +136,7 @@ public:
         initButterworthFilter(&acc_filter, 100.0, 25.0);
 
         initButterworthFilter(&vel_filter, 110.0, 20.0);
-        initButterworthFilter(&pos_filter, 110.0, 20.0);
+        initButterworthFilter(&pos_filter, 110.0, 25.0);
         this->dt = dt;
     }
 
@@ -224,6 +226,7 @@ void rotateVectorByQuaternion(Quaternion q, float v[3], float result[3])
 }
 
 Quaternion init_quat;
+Quaternion end_quat;
 Quaternion world_quat;
 Quaternion world_quat_no_rotation;
 
@@ -252,6 +255,19 @@ void InitialPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     world_quat_no_rotation = init_quat;
     Quaternion quat = body_axis_z(init_quat, 3.14159265359f / 2.0f);
     init_quat = quat;
+}
+
+void EndPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+    end_pose_x = msg->pose.position.y;
+    end_pose_y = msg->pose.position.x;
+    end_pose_z = -msg->pose.position.z - 0.3f;
+
+    end_quat.x = msg->pose.orientation.y;
+    end_quat.y = msg->pose.orientation.x;
+    end_quat.z = -msg->pose.orientation.z;
+    end_quat.w = msg->pose.orientation.w;
+    Quaternion quat = body_axis_z(end_quat, 3.14159265359f / 2.0f);
+    end_quat = quat;
 }
 
 float rc_channel[6];
@@ -442,7 +458,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
     tf2::Quaternion body_to_world_quat = world_to_body_quat.inverse();
     tf2::Vector3 acc_body(new_msg.linear_acceleration.x, -new_msg.linear_acceleration.y, -new_msg.linear_acceleration.z);
-    tf2::Vector3 acc_world = tf2::quatRotate(body_to_world_quat, acc_body);
+    tf2::Vector3 acc_world = tf2::quatRotate(world_to_body_quat, acc_body);
 
     float acc_array[3] = {
         static_cast<float>(acc_world.x()), static_cast<float>(acc_world.y()), static_cast<float>(acc_world.z())
@@ -453,7 +469,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
         acc_world.setZ(acc_world.z() - 9.80);
     }//clear gravity
 
-    acc_body = tf2::quatRotate(world_to_body_quat, acc_world);
+    acc_body = tf2::quatRotate(body_to_world_quat, acc_world);
 
     new_msg.linear_acceleration.x = acc_body.x();
     new_msg.linear_acceleration.y = acc_body.y();
@@ -606,9 +622,49 @@ void project2plane_callback(const ros::TimerEvent&)
     trans.transform.rotation.y = init_quat.y;
     trans.transform.rotation.z = init_quat.z;
     trans.transform.rotation.w = init_quat.w;
+
     trans.transform.translation.x = init_pose_x;
     trans.transform.translation.y = init_pose_y;
     trans.transform.translation.z = init_pose_z;
+    br.sendTransform(trans);
+
+    trans.header.frame_id = "map";
+    trans.child_frame_id = "real_end";
+    trans.header.stamp = ros::Time::now();
+    trans.transform.rotation.x = end_quat.x;
+    trans.transform.rotation.y = end_quat.y;
+    trans.transform.rotation.z = end_quat.z;
+    trans.transform.rotation.w = end_quat.w;
+
+    trans.transform.translation.x = end_pose_x;
+    trans.transform.translation.y = end_pose_y;
+    trans.transform.translation.z = end_pose_z;
+    br.sendTransform(trans);
+
+    trans.header.frame_id = "real_start";
+    trans.child_frame_id = "start_by";
+    trans.header.stamp = ros::Time::now();
+    trans.transform.rotation.x = 0.0;
+    trans.transform.rotation.y = 0.0;
+    trans.transform.rotation.z = 0.0;
+    trans.transform.rotation.w = 1.0;
+
+    trans.transform.translation.x = -5;
+    trans.transform.translation.y = 0;
+    trans.transform.translation.z = 1.5;
+    br.sendTransform(trans);
+
+    trans.header.frame_id = "real_end";
+    trans.child_frame_id = "end_by";
+    trans.header.stamp = ros::Time::now();
+    trans.transform.rotation.x = 0.0;
+    trans.transform.rotation.y = 0.0;
+    trans.transform.rotation.z = 0.0;
+    trans.transform.rotation.w = 1.0;
+
+    trans.transform.translation.x = -5;
+    trans.transform.translation.y = 0;
+    trans.transform.translation.z = 1.5;
     br.sendTransform(trans);
 
     geometry_msgs::TransformStamped base2plane;
@@ -655,13 +711,14 @@ int main(int argc, char** argv)
     ros::NodeHandle pnh("~");
     tf2_ros::TransformListener tfListener(tfBuffer);
 
-    ros::Timer timer1 = pnh.createTimer(ros::Duration(0.01), project2plane_callback);
+    ros::Timer timer1 = pnh.createTimer(ros::Duration(0.1), project2plane_callback);
 
     ros::Subscriber imu_sub = pnh.subscribe("/airsim_node/drone_1/imu/imu", 10, imuCallback);
     ros::Subscriber pose_sub = pnh.subscribe("/airsim_node/drone_1/gps", 10, poseCallback);
     ros::Subscriber debug_pose = pnh.subscribe("/airsim_node/drone_1/debug/pose_gt", 10, RealPoseCallback);
     //ros::Subscriber pcl_sub = pnh.subscribe("/airsim_node/drone_1/lidar", 10, pclCallback);
     ros::Subscriber init_sub = pnh.subscribe("/airsim_node/initial_pose", 10, InitialPoseCallback);
+    ros::Subscriber end_sub = pnh.subscribe("/airsim_node/end_goal", 10, EndPoseCallback);
     ros::Subscriber rviz_point_sub = pnh.subscribe("/clicked_point", 10, rviz_point_callback);
     ros::Subscriber rc6_sub = pnh.subscribe("/custom_debug/rc6", 10, channel6_callback);
 

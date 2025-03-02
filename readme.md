@@ -43,4 +43,7 @@ UWB Pose2Odom
 目标姿态 加重力加速度  
 change planner param  
 /exe/vel_limit
-/exe/acc_limit
+/exe/acc_limit  
+  
+all the point in world frame can only be put in nav::path  
+nav::path is in world axis  

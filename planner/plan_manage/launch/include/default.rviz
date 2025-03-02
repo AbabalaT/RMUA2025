@@ -175,6 +175,8 @@ Panels:
         - /drone411/Planning1/drone_path1
         - /drone411/Mapping1/map inflate1
         - /MovingObstaclesJoystick01/PredictedTrajectories1
+        - /Odometry2
+        - /Odometry2/Shape1
       Splitter Ratio: 0.4771505296230316
     Tree Height: 407
   - Class: rviz/Selection
@@ -369,8 +371,8 @@ Visualization Manager:
             - Alpha: 1
               Autocompute Intensity Bounds: true
               Autocompute Value Bounds:
-                Max Value: 80.625
-                Min Value: 64.375
+                Max Value: 15.524999618530273
+                Min Value: 0.02500000037252903
                 Value: true
               Axis: Z
               Channel Name: intensity
@@ -5934,7 +5936,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -5953,7 +5955,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /exe/path
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -6017,6 +6019,41 @@ Visualization Manager:
       Topic: /debug/real_map_odom
       Unreliable: false
       Value: false
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Keep: 1
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Queue Size: 10
+      Shape:
+        Alpha: 1
+        Axes Length: 2
+        Axes Radius: 0.05000000074505806
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Axes
+      Topic: /debug/real_pose_odom
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -6047,7 +6084,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 76.66512298583984
+      Distance: 9.6891450881958
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -6055,17 +6092,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 5.0811967849731445
-        Y: -2.154599189758301
-        Z: -9.5367431640625e-07
+        X: 0.11716294288635254
+        Y: 0.1410427689552307
+        Z: 1.441471226826252e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.33979934453964233
+      Pitch: 0.3347996473312378
       Target Frame: base_link
-      Yaw: 3.369072675704956
+      Yaw: 2.4790847301483154
     Saved:
       - Class: rviz/FPS
         Enable Stereo Rendering:
