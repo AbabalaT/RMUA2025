@@ -34,6 +34,8 @@ float no_g_acc[3];
 
 int init_waiting = 100;
 
+bool offboard_disable = false;
+
 float throttle_set = 0.0f;
 
 double kalman_q = 5000.0;
@@ -621,11 +623,11 @@ float pid_vx(float target, float real)
 
     error = target - real;
 
-    if (error > 6.0f)
+    if (error_rate > 6.0f)
     {
         error_rate = 6.0f;
     }
-    if (error < -6.0f)
+    if (error_rate < -6.0f)
     {
         error_rate = -6.0f;
     }
@@ -687,11 +689,11 @@ float pid_vy(float target, float real)
 
     error = target - real;
 
-    if (error > 6.0f)
+    if (error_rate > 6.0f)
     {
         error_rate = 6.0f;
     }
-    if (error < -6.0f)
+    if (error_rate < -6.0f)
     {
         error_rate = -6.0f;
     }
@@ -752,11 +754,11 @@ float pid_vz(float target, float real)
 
     error = target - real;
 
-    if (error > 6.0f)
+    if (error_rate > 6.0f)
     {
         error_rate = 6.0f;
     }
-    if (error < -6.0f)
+    if (error_rate < -6.0f)
     {
         error_rate = -6.0f;
     }
@@ -1549,6 +1551,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
                     world_target_vel[0] += tf_cmd[3];
                     world_target_vel[1] += tf_cmd[4];
                     world_target_vel[2] += tf_cmd[5];
+                    //std::cout<<"vel ff enabled"<<std::endl;
                 }
             }
         }
@@ -2391,7 +2394,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
 
         if(mission_step == 6001){
-            if (point_distance(target_world_pos, measure_world_pos) < 5.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 3.0)
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
@@ -2411,8 +2414,10 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 tf_cmd[9] = measure_world_pos[3];
 
                 tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
                 mission_step = 6002;
+
+                
+                offboard_disable = true;
             }
             return;
         }
@@ -2455,18 +2460,21 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 tf_cmd[10] = NAN;
                 mission_step = 6003;
 
+                
+                force_weak_power_mode = false;
+                offboard_disable = false;
+
                 std_msgs::Float32 limit_msg;
                 // limit_msg.data = 7.5;
                 // planner_acc_limit_publisher.publish(limit_msg);
-
+                
                 ros::NodeHandle pnh;
                 pnh.setParam("/drone_0_ego_planner_node/manager/max_acc", 5.0);
-                pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 33.0);
+                pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 30.0);
                 pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 5.0);
-                pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 33.0);
+                pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 30.0);
                 limit_msg.data = 35.0;
                 planner_vel_limit_publisher.publish(limit_msg);
-                force_weak_power_mode = false;
             }else{
                 if (measure_world_pos[2] < 190.0){
                     if(point_distance(measure_world_pos, target_world_pos) > 5.0){
@@ -2574,7 +2582,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
                         tf_cmd[5] = 5.0;
-                        std::cout<<"lift boost"<<std::endl;
+                        //std::cout<<"lift boost"<<std::endl;
                     }
                 }
                 
@@ -2594,7 +2602,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             return;
         }
         if(mission_step == 8001){
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 5.0)
             {
 
                 target_world_pos[0] = start_by_pose[0];
@@ -2617,11 +2625,13 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
                 mission_step = 8002;
+                offboard_disable = true;
             }
             return;
         }
         if (mission_step == 8002)
         {
+            
             target_world_pos[0] = start_by_pose[0];
             target_world_pos[1] = start_by_pose[1];
             target_world_pos[2] = start_by_pose[2];
@@ -2652,6 +2662,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
                 mission_step = 8003;
+                offboard_disable = false;
             }else{
                 if (point_distance(measure_world_pos, start_by_pose) > 5.0){
                     if(point_distance(measure_world_pos, target_world_pos) > 5.0){
