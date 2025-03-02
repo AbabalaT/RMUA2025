@@ -124,9 +124,9 @@
         <param name="optimization/weight_obstacle" value="120" type="double"/>
         <param name="optimization/weight_obstacle_soft" value="60" type="double"/>
         <param name="optimization/weight_swarm" value="10000.0" type="double"/>
-        <param name="optimization/weight_feasibility" value="2000.0" type="double"/>
-        <param name="optimization/weight_sqrvariance" value="100000.0" type="double"/>
-        <param name="optimization/weight_time" value="100.0" type="double"/>
+        <param name="optimization/weight_feasibility" value="10000.0" type="double"/>
+        <param name="optimization/weight_sqrvariance" value="60000.0" type="double"/>
+        <param name="optimization/weight_time" value="60.0" type="double"/>
         <param name="optimization/obstacle_clearance" value="0.1" type="double"/>
         <param name="optimization/obstacle_clearance_soft" value="0.5" type="double"/>
         <param name="optimization/swarm_clearance" value="0.15000000000000002" type="double"/> <!-- heterogeneous support: my required clearance -->

@@ -208,8 +208,8 @@ void pid_init(void)
     velocity_pid_mat[1][3] = 0.12;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.024f;
-    velocity_pid_mat[2][2] = 0.01f;
+    velocity_pid_mat[2][1] = 0.032f;
+    velocity_pid_mat[2][2] = 0.04f;
     velocity_pid_mat[2][3] = 0.012f;
 
     pos_pid_mat[0][0] = 0.0;
