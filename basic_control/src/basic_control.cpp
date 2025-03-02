@@ -1351,6 +1351,9 @@ BasicControl::BasicControl(ros::NodeHandle* nh)
     exe_path_publisher = nh->advertise<nav_msgs::Path>("/exe/path", 10);
     pcl_enbale_publisher = nh->advertise<std_msgs::Bool>("/pcl/enable", 10);
 
+    planner_acc_limit_publisher = nh->advertise<std_msgs::Float32>("/exe/acc_limit", 10);
+    planner_vel_limit_publisher = nh->advertise<std_msgs::Float32>("/exe/vel_limit", 10);
+
     initButterworthFilter(&world_vel_x_filter, 98.0, 1.25);
     initButterworthFilter(&world_vel_y_filter, 98.0, 1.25);
     initButterworthFilter(&world_vel_z_filter, 98.0, 1.25);
@@ -2223,6 +2226,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 target_world_pos[2] = exe_path2->back().position[2];
                 mission_step = 8;
                 force_strong_power_mode = true;
+
+                std_msgs::Float32 limit_msg;
+                limit_msg.data = 7.5;
+                planner_acc_limit_publisher.publish(limit_msg);
+                limit_msg.data = 30.0;
+                planner_acc_limit_publisher.publish(limit_msg);
             }
             return;
         }

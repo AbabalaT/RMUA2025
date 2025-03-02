@@ -57,6 +57,9 @@ private:
     ros::Publisher rate_z_real_publisher;
     ros::Publisher quad_goal_publisher;
 
+	ros::Publisher planner_acc_limit_publisher;
+	ros::Publisher planner_vel_limit_publisher;
+
 	ros::Publisher pcl_enbale_publisher;
 
 	ros::Publisher exe_path_publisher;
