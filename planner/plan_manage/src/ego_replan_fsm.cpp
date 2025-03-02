@@ -53,6 +53,8 @@ namespace ego_planner
                                                                   this,
                                                                   ros::TransportHints().tcpNoDelay());
 
+    vel_limit_sub_ = nh.subscribe("/exe/vel_limit", 10, &EGOReplanFSM::VelLimitCallback, this);
+    acc_limit_sub_ = nh.subscribe("/exe/acc_limit", 10, &EGOReplanFSM::AccLimitCallback, this);
     poly_traj_pub_ = nh.advertise<traj_utils::PolyTraj>("planning/trajectory", 10);
     data_disp_pub_ = nh.advertise<traj_utils::DataDisp>("planning/data_display", 100);
     heartbeat_pub_ = nh.advertise<std_msgs::Empty>("planning/heartbeat", 10);
@@ -402,6 +404,18 @@ namespace ego_planner
       }
       j_start = 0;
     }
+  }
+
+  void EGOReplanFSM::VelLimitCallback(const std_msgs::Float32::ConstPtr& msg)
+  {
+    planner_manager_->pp_.max_vel_ = msg->data;
+    planner_manager_->PloySetVelLimit(msg->data);
+  }
+
+  void EGOReplanFSM::AccLimitCallback(const std_msgs::Float32::ConstPtr& msg)
+  {
+    planner_manager_->pp_.max_acc_ = msg->data;
+    planner_manager_->PloySetAccLimit(msg->data);
   }
 
   bool EGOReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)

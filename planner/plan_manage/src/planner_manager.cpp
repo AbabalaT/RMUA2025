@@ -16,8 +16,8 @@ namespace ego_planner
   {
     /* read algorithm parameters */
 
-    nh.param("manager/max_vel", pp_.max_vel_, -1.0);
-    nh.param("manager/max_acc", pp_.max_acc_, -1.0);
+    nh.param("manager/max_vel", pp_.max_vel_, -1.0);//TODO receive value from topic
+    nh.param("manager/max_acc", pp_.max_acc_, -1.0);//TODO receive value from topic
     nh.param("manager/feasibility_tolerance", pp_.feasibility_tolerance_, 0.0);
     nh.param("manager/polyTraj_piece_length", pp_.polyTraj_piece_length, -1.0);
     nh.param("manager/planning_horizon", pp_.planning_horizen_, 5.0);
@@ -378,6 +378,16 @@ namespace ego_planner
     }
 
     return ret;
+  }
+
+  void EGOPlannerManager::PloySetAccLimit(float acc_limit)
+  {
+    ploy_traj_opt_->set_acc_limit(acc_limit);
+  }
+
+  void EGOPlannerManager::PloySetVelLimit(float vel_limit)
+  {
+    ploy_traj_opt_->set_vel_limit(vel_limit);
   }
 
   bool EGOPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)

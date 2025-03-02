@@ -1625,8 +1625,8 @@ namespace ego_planner
     nh.param("optimization/obstacle_clearance", obs_clearance_, -1.0);
     nh.param("optimization/obstacle_clearance_soft", obs_clearance_soft_, -1.0);
     nh.param("optimization/swarm_clearance", swarm_clearance_, -1.0);
-    nh.param("optimization/max_vel", max_vel_, -1.0);
-    nh.param("optimization/max_acc", max_acc_, -1.0);
+    nh.param("optimization/max_vel", max_vel_, -1.0);//TODO receive value from topic
+    nh.param("optimization/max_acc", max_acc_, -1.0);//TODO receive value from topic
     nh.param("optimization/max_jer", max_jer_, -1.0);
   }
 
@@ -1653,4 +1653,12 @@ namespace ego_planner
 
   void PolyTrajOptimizer::setUseMultitopologyTrajs(bool use_multitopology_trajs) { multitopology_data_.use_multitopology_trajs = use_multitopology_trajs; }
 
+  void PolyTrajOptimizer::set_acc_limit(float acc_limit)
+  {
+    max_acc_ = acc_limit;
+  }
+  void PolyTrajOptimizer::set_vel_limit(float vel_limit)
+  {
+    max_vel_ = vel_limit;
+  }
 } // namespace ego_planner

@@ -123,6 +123,8 @@ namespace ego_planner
     void setIfTouchGoal(const bool touch_goal);
     void setConstraintPoints(ConstraintPoints cps);
     void setUseMultitopologyTrajs(bool use_multitopology_trajs);
+    void set_acc_limit(float acc_limit);
+    void set_vel_limit(float vel_limit);
 
     /* helper functions */
     inline const ConstraintPoints &getControlPoints(void) { return cps_; }

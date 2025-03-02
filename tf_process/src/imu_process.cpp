@@ -134,7 +134,7 @@ public:
         initButterworthFilter(&acc_filter, 100.0, 25.0);
 
         initButterworthFilter(&vel_filter, 110.0, 20.0);
-        initButterworthFilter(&pos_filter, 110.0, 25.0);
+        initButterworthFilter(&pos_filter, 110.0, 20.0);
         this->dt = dt;
     }
 
@@ -541,7 +541,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     auto state_y = kalman_filters[1].getState();
     auto state_z = kalman_filters[2].getState();
 
-    std::cout << "x: " << state_x(0)<<", "<< state_x(1) << " y: " << state_y(0)<<", "<< state_y(1) << " z: " << state_z(0)<<", "<< state_z(1) << std::endl;
+    //std::cout << "x: " << state_x(0)<<", "<< state_x(1) << " y: " << state_y(0)<<", "<< state_y(1) << " z: " << state_z(0)<<", "<< state_z(1) << std::endl;
     nav_msgs::Odometry odom_msg;
     odom_msg.header.stamp = ros::Time::now();
     odom_msg.header.frame_id = "map";

@@ -11,11 +11,10 @@
     <include file="$(find tf_process)/launch/TF.launch"/>
     <include file="$(find basic_control)/launch/basic_control.launch"/>
 <!--     <include file="$(find tf_process)/launch/ukf1.launch"/> -->
-<!--     <include file="$(find tf_process)/launch/ukf2.launch"/> -->
     <include file="$(find pcl2process)/launch/pcl2pro.launch"/>
 <!--     <include file="$(find move_controller)/launch/move_base.launch"/> -->
     <include file="$(find ego_planner)/launch/rmua.launch"/>
-    <arg name="rviz" default="true" />
+    <arg name="rviz" default="false" />
     <group if="$(arg rviz)">
 	    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz_flight_control" args="-d $(find fast_lio)/rviz_cfg/loam_livox.rviz" />
 	</group>

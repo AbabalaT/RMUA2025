@@ -54,6 +54,9 @@ namespace ego_planner
     inline int getCpsNumPrePiece(void) { return ploy_traj_opt_->get_cps_num_prePiece_(); }
     // inline PtsChk_t getPtsCheck(void) { return ploy_traj_opt_->get_pts_check_(); }
 
+    void PloySetAccLimit(float acc_limit);
+    void PloySetVelLimit(float vel_limit);
+
     PlanParameters pp_;
     GridMap::Ptr grid_map_;
     TrajContainer traj_;

@@ -2122,7 +2122,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             for (auto path = mission_path_list.begin(); path != mission_path_list.end(); path++)
             {
                 i = i + 1;
-                float path_begin_point[] = {path->front().position[0], path->front().position[1] + 750.0, path->front().position[2]};
+                float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
                 std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
                 std::cout<<"path"<<i<<" pose "<< path_begin_point[0]<<", "<< path_begin_point[1]<<", "<< path_begin_point[2] <<std::endl;
                 float current_distance = point_distance(start_pose, path_begin_point);
@@ -2144,7 +2144,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 i = i + 1;
                 std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
-                float path_begin_point[] = {path->front().position[0], path->front().position[1] + 750.0, path->front().position[2]};
+                float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
                 float current_distance = point_distance(end_pose, path_begin_point);
                 if (current_distance < min_distance)
                 {
@@ -2167,7 +2167,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 geometry_msgs::PoseStamped path_point;
                 path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1];
+                path_point.pose.position.y = point->position[1] - 750.0;
                 path_point.pose.position.z = point->position[2];
                 mission_path_1.poses.push_back(path_point);
             }
@@ -2175,7 +2175,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 geometry_msgs::PoseStamped path_point;
                 path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1];
+                path_point.pose.position.y = point->position[1] - 750.0;
                 path_point.pose.position.z = point->position[2];
                 mission_path_2.poses.push_back(path_point);
             }
@@ -2183,7 +2183,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 geometry_msgs::PoseStamped path_point;
                 path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1];
+                path_point.pose.position.y = point->position[1] - 750.0;
                 path_point.pose.position.z = point->position[2];
                 mission_path_3.poses.push_back(path_point);
             }
@@ -2191,24 +2191,24 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 geometry_msgs::PoseStamped path_point;
                 path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1];
+                path_point.pose.position.y = point->position[1] - 750.0;
                 path_point.pose.position.z = point->position[2];
                 mission_path_4.poses.push_back(path_point);
             }
             exe_path_publisher.publish(mission_path_1);
             target_world_pos[0] = exe_path1->back().position[0];
-            target_world_pos[1] = exe_path1->back().position[1] + 750.0;
+            target_world_pos[1] = exe_path1->back().position[1];
             target_world_pos[2] = exe_path1->back().position[2];
             mission_step = 6;
             return;
         }
         if (mission_step == 6)
         {
-            if (point_distance(measure_world_pos, target_world_pos) < 2.0)
+            if (point_distance(measure_world_pos, target_world_pos) < 6.0)
             {
                 exe_path_publisher.publish(mission_path_2);
                 target_world_pos[0] = exe_path2->front().position[0];
-                target_world_pos[1] = exe_path2->front().position[1] + 750.0;
+                target_world_pos[1] = exe_path2->front().position[1];
                 target_world_pos[2] = exe_path2->front().position[2];
                 mission_step = 7;
             }
@@ -2219,7 +2219,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 exe_path_publisher.publish(mission_path_3);
                 target_world_pos[0] = exe_path2->back().position[0];
-                target_world_pos[1] = exe_path2->back().position[1] + 750.0;
+                target_world_pos[1] = exe_path2->back().position[1];
                 target_world_pos[2] = exe_path2->back().position[2];
                 mission_step = 8;
                 force_strong_power_mode = true;
@@ -2227,19 +2227,16 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             return;
         }
         if(mission_step == 8){
-            if (point_distance(measure_world_pos, target_world_pos) < 2.0)
+            if (point_distance(measure_world_pos, target_world_pos) < 6.0)
             {
                 exe_path_publisher.publish(mission_path_4);
                 target_world_pos[0] = exe_path1->front().position[0];
-                target_world_pos[1] = exe_path1->front().position[1] + 750.0;
+                target_world_pos[1] = exe_path1->front().position[1];
                 target_world_pos[2] = exe_path1->front().position[2];
                 mission_step = 9;
                 force_strong_power_mode = true;
             }
             return;
         }
-        //forward road
-        //back road
     }
-
 }
