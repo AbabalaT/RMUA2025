@@ -1383,7 +1383,7 @@ BasicControl::BasicControl(ros::NodeHandle* nh)
     pwm_send_timer = nh->createTimer(ros::Duration(0.0125),
                                      std::bind(&BasicControl::pwm_send_callback, this, std::placeholders::_1));
 
-    scheduler_timer = nh->createTimer(ros::Duration(0.25), 
+    scheduler_timer = nh->createTimer(ros::Duration(0.1), 
                                      std::bind(&BasicControl::scheduler_callback, this, std::placeholders::_1));
 
     for (int i = 0; i < 11; i++)
@@ -2092,7 +2092,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             if (point_distance(start_pose, measure_world_pos) < 2.0)
             {
                 mission_cnt = mission_cnt+1;
-                if (mission_cnt > 3)
+                if (mission_cnt > 10)
                 {
                     mission_cnt = 0;
                     init_waiting = 2;
@@ -2125,6 +2125,14 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             tf_cmd[9] = measure_world_pos[3];
             tf_cmd[10] = NAN;
             tf_cmd[10] = NAN;
+
+            // ros::NodeHandle pnh;
+            // pnh->setParam("/custom_debug/rc_mode", -1);
+
+            std_msgs::Float32 limit_msg;
+            limit_msg.data = 15.0;
+            planner_vel_limit_publisher.publish(limit_msg);
+
             mission_step = 3;
             return;
         }
@@ -2303,11 +2311,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             // path_point.pose.position.z = start_pose[2];
             // mission_path_4.poses.push_back(path_point);
 
-            // std_msgs::Float32 limit_msg;
-            // limit_msg.data = 3.0;
-            // planner_acc_limit_publisher.publish(limit_msg);
-            // limit_msg.data = 15.0;
-            // planner_acc_limit_publisher.publish(limit_msg);
+            
 
             exe_path_publisher.publish(mission_path_1);
             target_world_pos[0] = mission_path_1.poses.back().pose.position.x;
@@ -2318,7 +2322,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         if (mission_step == 6)
         {
-            if (point_distance(measure_world_pos, target_world_pos) < 2.0)
+            if (point_distance(measure_world_pos, target_world_pos) < 1.0)
             {
                 exe_path_publisher.publish(mission_path_2);
                 target_world_pos[0] = mission_path_2.poses.back().pose.position.x;
@@ -2330,7 +2334,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
 
         if(mission_step == 6001){
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 3.0)
             {
                 geometry_msgs::TransformStamped base2plane;
                 try
@@ -2378,8 +2382,14 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             tf_cmd[0] = target_world_pos[0];
             tf_cmd[1] = target_world_pos[1];
             tf_cmd[2] = target_world_pos[2];
+            tf_cmd[3] = NAN;
+            tf_cmd[4] = NAN;
+            tf_cmd[5] = NAN;
+            tf_cmd[6] = NAN;
+            tf_cmd[7] = NAN;
+            tf_cmd[8] = NAN;
 
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 1.5)
             {
                 target_world_pos[0] = end_pose[0];
                 target_world_pos[1] = end_pose[1];
@@ -2401,12 +2411,25 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
                 mission_step = 6003;
+
+                std_msgs::Float32 limit_msg;
+                // limit_msg.data = 7.5;
+                // planner_acc_limit_publisher.publish(limit_msg);
+
+                ros::NodeHandle pnh;
+                pnh.setParam("/drone_0_ego_planner_node/manager/max_acc", 6.0);
+                pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 30.0);
+                pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 6.0);
+                pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 30.0);
+                limit_msg.data = 30.0;
+                planner_vel_limit_publisher.publish(limit_msg);
+                
             }
             return;
         }
         if (mission_step == 6003)
         {
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
@@ -2428,21 +2451,13 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
                 mission_step = 6004;
-
                 force_strong_power_mode = true;
-                
-                std_msgs::Float32 limit_msg;
-                limit_msg.data = 7.5;
-                planner_acc_limit_publisher.publish(limit_msg);
-                limit_msg.data = 30.0;
-                planner_acc_limit_publisher.publish(limit_msg);
-                
             }
             return;
         }
         if (mission_step == 6004)
         {
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.5)
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
@@ -2481,7 +2496,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             return;
         }
         if(mission_step == 8){
-            if (point_distance(measure_world_pos, target_world_pos) < 6.0)
+            if (point_distance(measure_world_pos, target_world_pos) < 3.0)
             {
                 exe_path_publisher.publish(mission_path_4);
                 target_world_pos[0] = mission_path_4.poses.back().pose.position.x;
@@ -2493,7 +2508,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             return;
         }
         if(mission_step == 8001){
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
 
                 target_world_pos[0] = start_by_pose[0];
@@ -2529,7 +2544,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             tf_cmd[1] = target_world_pos[1];
             tf_cmd[2] = target_world_pos[2];
 
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 target_world_pos[0] = start_pose[0];
                 target_world_pos[1] = start_pose[1];

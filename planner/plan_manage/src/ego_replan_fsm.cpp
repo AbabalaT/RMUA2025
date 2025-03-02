@@ -12,7 +12,7 @@ namespace ego_planner
     have_recv_pre_agent_ = false;
     flag_escape_emergency_ = true;
     mandatory_stop_ = false;
-
+    init_nh = &nh;
     /*  fsm param  */
     nh.param("fsm/flight_type", target_type_, -1);
     nh.param("fsm/thresh_replan_time", replan_thresh_, -1.0);
@@ -410,12 +410,21 @@ namespace ego_planner
   {
     planner_manager_->pp_.max_vel_ = msg->data;
     planner_manager_->PloySetVelLimit(msg->data);
+
+    visualization_.reset(new PlanningVisualization(*init_nh));
+    planner_manager_.reset(new EGOPlannerManager);
+    planner_manager_->initPlanModules(*(init_nh), visualization_);
+
   }
 
   void EGOReplanFSM::AccLimitCallback(const std_msgs::Float32::ConstPtr& msg)
   {
     planner_manager_->pp_.max_acc_ = msg->data;
     planner_manager_->PloySetAccLimit(msg->data);
+
+    visualization_.reset(new PlanningVisualization(*init_nh));
+    planner_manager_.reset(new EGOPlannerManager);
+    planner_manager_->initPlanModules(*(init_nh), visualization_);
   }
 
   bool EGOReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)

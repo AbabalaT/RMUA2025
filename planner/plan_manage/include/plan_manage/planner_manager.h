@@ -23,7 +23,6 @@ namespace ego_planner
   public:
     EGOPlannerManager();
     ~EGOPlannerManager();
-
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     /* main planning interface */

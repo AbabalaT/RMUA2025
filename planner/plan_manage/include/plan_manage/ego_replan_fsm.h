@@ -33,7 +33,7 @@ namespace ego_planner
   public:
     EGOReplanFSM() {}
     ~EGOReplanFSM() {}
-
+    ros::NodeHandle* init_nh;
     void init(ros::NodeHandle &nh);
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
