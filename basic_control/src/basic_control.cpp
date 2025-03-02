@@ -632,13 +632,13 @@ float pid_vx(float target, float real)
 
     sum = sum + error;
 
-    if (sum > 10000.0f)
+    if (sum > 3000.0f)
     {
-        sum = 10000.0;
+        sum = 3000.0;
     }
-    if (sum < -10000.0f)
+    if (sum < -3000.0f)
     {
-        sum = -10000.0;
+        sum = -3000.0;
     }
 
     if (error > 50.0f)
@@ -698,13 +698,13 @@ float pid_vy(float target, float real)
 
     sum = sum + error;
 
-    if (sum > 10000.0f)
+    if (sum > 3000.0f)
     {
-        sum = 10000.0;
+        sum = 3000.0;
     }
-    if (sum < -10000.0f)
+    if (sum < -3000.0f)
     {
-        sum = -10000.0;
+        sum = -3000.0;
     }
 
     if (error > 50.0f)
@@ -763,13 +763,13 @@ float pid_vz(float target, float real)
 
     sum = sum + error;
 
-    if (sum > 10000.0f)
+    if (sum > 3000.0f)
     {
-        sum = 10000.0;
+        sum = 3000.0;
     }
-    if (sum < -10000.0f)
+    if (sum < -3000.0f)
     {
-        sum = -10000.0;
+        sum = -3000.0;
     }
 
     if (error > 50.0f)
@@ -2461,9 +2461,9 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 ros::NodeHandle pnh;
                 pnh.setParam("/drone_0_ego_planner_node/manager/max_acc", 5.0);
-                pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 50.0);
+                pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 33.0);
                 pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 5.0);
-                pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 50.0);
+                pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 33.0);
                 limit_msg.data = 35.0;
                 planner_vel_limit_publisher.publish(limit_msg);
                 force_weak_power_mode = false;
