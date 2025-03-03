@@ -339,15 +339,15 @@ float pid_roll(float target, float real, float dt)
     }
 
     d_error = 0.0f - real;
-    error_rate = d_error - pre_error;
+    error_rate = (d_error - pre_error)/ dt;
 
-    if (error_rate > 0.5f)
+    if (error_rate > 50.0f)
     {
-        error_rate = 0.2f;
+        error_rate = 20.0f;
     }
-    if (error_rate < -0.5f)
+    if (error_rate < -50.0f)
     {
-        error_rate = -0.2;
+        error_rate = -20.0;
     }
 
     pre_error = d_error;
@@ -366,10 +366,7 @@ float pid_roll(float target, float real, float dt)
     {
         max_d = error_rate;
     }
-
-    //    std::cout<<"real: "<<real<<" "<<"target: "<<target<<" "<<"sum = "<<sum<<" "<<"d_out_1 = "<<d_out<<std::endl;
-    //    std::cout<<"throttle"<<throttle_set<<std::endl;
-    result = mat_pid[0][0] * target + mat_pid[0][1] * error + mat_pid[0][2] * sum + mat_pid[0][3] * d_out / dt;
+    result = mat_pid[0][0] * target + mat_pid[0][1] * error + mat_pid[0][2] * sum + mat_pid[0][3] * d_out ;
     return result;
 }
 
@@ -419,15 +416,15 @@ float pid_pitch(float target, float real, float dt)
     }
 
     d_error = 0.0f - real;
-    error_rate = d_error - pre_error;
+    error_rate = (d_error - pre_error)/ dt;
 
-    if (error_rate > 0.7f)
+    if (error_rate > 70.0f)
     {
-        error_rate = 0.0f;
+        error_rate = 20.0f;
     }
-    if (error_rate < -0.7f)
+    if (error_rate < -70.0f)
     {
-        error_rate = -0.0;
+        error_rate = -20.0;
     }
 
     pre_error = d_error;
@@ -435,7 +432,7 @@ float pid_pitch(float target, float real, float dt)
     d_out = pid_N * error_rate + (1.0f - pid_N) * d_out_1;
     d_out_1 = d_out;
 
-    result = mat_pid[1][0] * target + mat_pid[1][1] * error + mat_pid[1][2] * sum + mat_pid[1][3] * d_out / dt;
+    result = mat_pid[1][0] * target + mat_pid[1][1] * error + mat_pid[1][2] * sum + mat_pid[1][3] * d_out;
     return result;
 }
 
@@ -478,15 +475,15 @@ float pid_yaw(float target, float real, float dt)
     }
 
     d_error = 0.0f - real;
-    error_rate = d_error - pre_error;
+    error_rate = (d_error - pre_error)/ dt;
 
-    if (error_rate > 0.7f)
+    if (error_rate > 70.0f)
     {
-        error_rate = 0.0f;
+        error_rate = 20.0f;
     }
-    if (error_rate < -0.7f)
+    if (error_rate < -70.0f)
     {
-        error_rate = -0.0;
+        error_rate = -20.0;
     }
 
     pre_error = d_error;
@@ -494,7 +491,7 @@ float pid_yaw(float target, float real, float dt)
     d_out = pid_N * error_rate + (1.0f - pid_N) * d_out_1;
     d_out_1 = d_out;
 
-    result = mat_pid[2][0] * target + mat_pid[2][1] * error + mat_pid[2][2] * sum + mat_pid[2][3] * d_out / dt;
+    result = mat_pid[2][0] * target + mat_pid[2][1] * error + mat_pid[2][2] * sum + mat_pid[2][3] * d_out;
     return result;
 }
 
@@ -504,15 +501,18 @@ float pid_angle_roll(float error, float dt)
     static float pre_error;
     static float result;
     static float error_rate;
-    sum = sum + error;
-    if (sum > 25.0f)
+
+    sum = sum + error * dt;
+
+    if (sum > 0.25f)
     {
-        sum = 25.0f;
+        sum = 0.25f;
     }
-    if (sum < -25.0f)
+    if (sum < -0.25f)
     {
-        sum = -25.0f;
+        sum = -0.25f;
     }
+
     if (error > 45.0f)
     {
         sum = 0.0f;
@@ -521,6 +521,7 @@ float pid_angle_roll(float error, float dt)
     {
         sum = 0.0f;
     }
+
     if (throttle_set < 0.010f)
     {
         sum = 0.0f;
@@ -529,10 +530,11 @@ float pid_angle_roll(float error, float dt)
     {
         sum = 0.0f;
     }
-    error_rate = error - pre_error;
 
+    error_rate = (error - pre_error) / dt;
     pre_error = error;
-    result = angle_pid_mat[0][0] * error + angle_pid_mat[0][1] * dt * sum + angle_pid_mat[0][2] / dt * error_rate;
+
+    result = angle_pid_mat[0][0] * error + angle_pid_mat[0][1] * sum + angle_pid_mat[0][2] * error_rate;
     return result;
 }
 
@@ -542,15 +544,17 @@ float pid_angle_pitch(float error, float dt)
     static float pre_error;
     static float result;
     static float error_rate;
-    sum = sum + error;
-    if (sum > 25.0f)
+    sum = sum + error * dt;
+
+    if (sum > 0.25f)
     {
-        sum = 25.0f;
+        sum = 0.25f;
     }
-    if (sum < -25.0f)
+    if (sum < -0.25f)
     {
-        sum = -25.0f;
+        sum = -0.25f;
     }
+
     if (error > 45.0f)
     {
         sum = 0.0f;
@@ -559,6 +563,7 @@ float pid_angle_pitch(float error, float dt)
     {
         sum = 0.0f;
     }
+
     if (throttle_set < 0.010f)
     {
         sum = 0.0f;
@@ -567,9 +572,11 @@ float pid_angle_pitch(float error, float dt)
     {
         sum = 0.0f;
     }
-    error_rate = error - pre_error;
+
+    error_rate = (error - pre_error) / dt;
     pre_error = error;
-    result = angle_pid_mat[1][0] * error + angle_pid_mat[1][1] * dt * sum + angle_pid_mat[1][2] / dt * error_rate;
+
+    result = angle_pid_mat[1][0] * error + angle_pid_mat[1][1] * sum + angle_pid_mat[1][2] * error_rate;
     return result;
 }
 
@@ -579,15 +586,18 @@ float pid_angle_yaw(float error, float dt)
     static float pre_error;
     static float result;
     static float error_rate;
-    sum = sum + error;
-    if (sum > 25.0f)
+
+    sum = sum + error * dt;
+
+    if (sum > 0.25f)
     {
-        sum = 25.0f;
+        sum = 0.25f;
     }
-    if (sum < -25.0f)
+    if (sum < -0.25f)
     {
-        sum = -25.0f;
+        sum = -0.25f;
     }
+
     if (error > 45.0f)
     {
         sum = 0.0f;
@@ -596,6 +606,7 @@ float pid_angle_yaw(float error, float dt)
     {
         sum = 0.0f;
     }
+
     if (throttle_set < 0.010f)
     {
         sum = 0.0f;
@@ -604,13 +615,15 @@ float pid_angle_yaw(float error, float dt)
     {
         sum = 0.0f;
     }
-    error_rate = error - pre_error;
+
+    error_rate = (error - pre_error) / dt;
     pre_error = error;
-    result = angle_pid_mat[2][0] * error + angle_pid_mat[2][1] * dt * sum + angle_pid_mat[2][2] / dt * error_rate;
+
+    result = angle_pid_mat[2][0] * error + angle_pid_mat[2][1] * sum + angle_pid_mat[2][2] * error_rate;
     return result;
 }
 
-float pid_vx(float target, float real)
+float pid_vx(float target, float real, double dt = 0.01)
 {
     static float error;
     static float sum;
@@ -622,6 +635,35 @@ float pid_vx(float target, float real)
     static float d_error;
 
     error = target - real;
+
+    if(error < 50 and error > -50){
+        sum = sum + error * dt;
+    }
+
+    if (sum > 30.0f)
+    {
+        sum = 30.0;
+    }
+    if (sum < -30.0f)
+    {
+        sum = -30.0;
+    }
+
+    if (init_waiting > 0)
+    {
+        sum = 0.0f;
+    }
+
+    if (rc_mode != 0)
+    {
+        if (ctrl_mode != 2)
+        {
+            sum = 0.0f;
+        }
+    }
+
+    d_error = 0.0 - real;
+    error_rate = (d_error - pre_error) / dt;
 
     if (error_rate > 6.0f)
     {
@@ -632,25 +674,42 @@ float pid_vx(float target, float real)
         error_rate = -6.0f;
     }
 
-    sum = sum + error;
+    pre_error = d_error;
 
-    if (sum > 3000.0f)
-    {
-        sum = 3000.0;
-    }
-    if (sum < -3000.0f)
-    {
-        sum = -3000.0;
+    d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
+    d_out_1 = d_out;
+
+    result = velocity_pid_mat[1][0] * target + velocity_pid_mat[1][1] * (error + velocity_pid_mat[1][2] * sum +
+        velocity_pid_mat[1][3] * d_out);
+    return result;
+}
+
+float pid_vy(float target, float real, double dt = 0.01)
+{
+    static float error;
+    static float sum;
+    static float pre_error;
+    static float result;
+    static float error_rate;
+    static float d_out_1;
+    static float d_out;
+    static float d_error;
+
+    error = target - real;
+
+    if(error < 50 and error > -50){
+        sum = sum + error * dt;
     }
 
-    if (error > 50.0f)
+    if (sum > 30.0f)
     {
-        sum = 0.0f;
+        sum = 30.0;
     }
-    if (error < -50.0f)
+    if (sum < -30.0f)
     {
-        sum = 0.0f;
+        sum = -30.0;
     }
+
     if (init_waiting > 0)
     {
         sum = 0.0f;
@@ -665,29 +724,7 @@ float pid_vx(float target, float real)
     }
 
     d_error = 0.0 - real;
-    error_rate = d_error - pre_error;
-    pre_error = d_error;
-
-    d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
-    d_out_1 = d_out;
-
-    result = velocity_pid_mat[1][0] * target + velocity_pid_mat[1][1] * (error + velocity_pid_mat[1][2] * sum * 0.01 +
-        velocity_pid_mat[1][3] * d_out / 0.01);
-    return result;
-}
-
-float pid_vy(float target, float real)
-{
-    static float error;
-    static float sum;
-    static float pre_error;
-    static float result;
-    static float error_rate;
-    static float d_out_1;
-    static float d_out;
-    static float d_error;
-
-    error = target - real;
+    error_rate = (d_error - pre_error) / dt;
 
     if (error_rate > 6.0f)
     {
@@ -698,50 +735,17 @@ float pid_vy(float target, float real)
         error_rate = -6.0f;
     }
 
-    sum = sum + error;
-
-    if (sum > 3000.0f)
-    {
-        sum = 3000.0;
-    }
-    if (sum < -3000.0f)
-    {
-        sum = -3000.0;
-    }
-
-    if (error > 50.0f)
-    {
-        sum = 0.0f;
-    }
-    if (error < -50.0f)
-    {
-        sum = 0.0f;
-    }
-    if (init_waiting > 0)
-    {
-        sum = 0.0f;
-    }
-    if (rc_mode != 0)
-    {
-        if (ctrl_mode != 2)
-        {
-            sum = 0.0f;
-        }
-    }
-
-    d_error = 0.0 - real;
-    error_rate = d_error - pre_error;
     pre_error = d_error;
 
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = velocity_pid_mat[1][0] * target + velocity_pid_mat[1][1] * (error + velocity_pid_mat[1][2] * sum * 0.01 +
-        velocity_pid_mat[1][3] * d_out / 0.01);
+    result = velocity_pid_mat[1][0] * target + velocity_pid_mat[1][1] * (error + velocity_pid_mat[1][2] * sum +
+        velocity_pid_mat[1][3] * d_out);
     return result;
 }
 
-float pid_vz(float target, float real)
+float pid_vz(float target, float real, double dt = 0.01)
 {
     static float error;
     static float sum;
@@ -753,6 +757,35 @@ float pid_vz(float target, float real)
     static float d_error;
 
     error = target - real;
+
+    if(error < 50 and error > -50){
+        sum = sum + error * dt;
+    }
+
+    if (sum > 30.0f)
+    {
+        sum = 30.0;
+    }
+    if (sum < -30.0f)
+    {
+        sum = -30.0;
+    }
+
+    if (init_waiting > 0)
+    {
+        sum = 0.0f;
+    }
+
+    if (rc_mode != 0)
+    {
+        if (ctrl_mode != 2)
+        {
+            sum = 0.0f;
+        }
+    }
+
+    d_error = 0.0 - real;
+    error_rate = (d_error - pre_error) / dt;
 
     if (error_rate > 6.0f)
     {
@@ -763,51 +796,17 @@ float pid_vz(float target, float real)
         error_rate = -6.0f;
     }
 
-    sum = sum + error;
-
-    if (sum > 3000.0f)
-    {
-        sum = 3000.0;
-    }
-    if (sum < -3000.0f)
-    {
-        sum = -3000.0;
-    }
-
-    if (error > 50.0f)
-    {
-        sum = 0.0f;
-    }
-    if (error < -50.0f)
-    {
-        sum = 0.0f;
-    }
-
-    if (init_waiting > 0)
-    {
-        sum = 0.0f;
-    }
-    if (rc_mode != 0)
-    {
-        if (ctrl_mode != 2)
-        {
-            sum = 0.0f;
-        }
-    }
-
-    d_error = 0.0 - real;
-    error_rate = d_error - pre_error;
     pre_error = d_error;
 
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = velocity_pid_mat[2][0] * target + velocity_pid_mat[2][1] * (error + velocity_pid_mat[2][2] * sum * 0.01 +
-        velocity_pid_mat[2][3] * d_out * 100.0);
+    result = velocity_pid_mat[2][0] * target + velocity_pid_mat[2][1] * (error + velocity_pid_mat[2][2] * sum +
+        velocity_pid_mat[2][3] * d_out);
     return result;
 }
 
-float pid_pos_x(float target, float real)
+float pid_pos_x(float target, float real, double dt = 0.01)
 {
     static float error;
     static float sum;
@@ -820,35 +819,25 @@ float pid_pos_x(float target, float real)
 
     error = target - real;
 
-    if (error > 6.0f)
+    sum = sum + error * dt;
+
+    if (sum > 10.0f)
     {
-        error_rate = 6.0f;
+        sum = 10.0;
     }
-    if (error < -6.0f)
+    if (sum < -10.0f)
     {
-        error_rate = -6.0f;
+        sum = -10.0;
     }
 
-    sum = sum + error;
-
-    if (sum > 1000.0f)
-    {
-        sum = 1000.0;
-    }
-    if (sum < -1000.0f)
-    {
-        sum = -1000.0;
-    }
-
-    if (error > 20.0f)
+    if (error > 10.0f)
     {
         sum = 0.0f;
     }
-    if (error < -20.0f)
+    if (error < -10.0f)
     {
         sum = 0.0f;
     }
-
     if (init_waiting > 0)
     {
         sum = 0.0f;
@@ -862,30 +851,37 @@ float pid_pos_x(float target, float real)
     }
 
     d_error = 0.0 - real;
-    error_rate = d_error - pre_error;
+    error_rate = (d_error - pre_error) / dt;
     pre_error = d_error;
+
+    if (error > 6.0f)
+    {
+        error_rate = 6.0f;
+    }
+    if (error < -6.0f)
+    {
+        error_rate = -6.0f;
+    }
 
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (error + pos_pid_mat[0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
-    // result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (1.0 - pow(3, -1.5 * abs(error))) * (error + pos_pid_mat[
-    //     0][2] * sum * 0.01 + pos_pid_mat[0][3] * d_out / 0.01);
+    result = pos_pid_mat[0][0] * target + pos_pid_mat[0][1] * (error + pos_pid_mat[0][2] * sum + pos_pid_mat[0][3] * d_out);
 
-    if (result > 15.0f)
+    if (result > 20.0f)
     {
-        result = 15.0f;
+        result = 20.0f;
     }
 
-    if (result < -15.0f)
+    if (result < -20.0f)
     {
-        result = -15.0f;
+        result = -20.0f;
     }
 
     return result;
 }
 
-float pid_pos_y(float target, float real)
+float pid_pos_y(float target, float real, double dt = 0.01)
 {
     static float error;
     static float sum;
@@ -898,35 +894,25 @@ float pid_pos_y(float target, float real)
 
     error = target - real;
 
-    if (error > 6.0f)
+    sum = sum + error * dt;
+
+    if (sum > 10.0f)
     {
-        error_rate = 6.0f;
+        sum = 10.0;
     }
-    if (error < -6.0f)
+    if (sum < -10.0f)
     {
-        error_rate = -6.0f;
+        sum = -10.0;
     }
 
-    sum = sum + error;
-
-    if (sum > 1000.0f)
-    {
-        sum = 1000.0;
-    }
-    if (sum < -1000.0f)
-    {
-        sum = -1000.0;
-    }
-
-    if (error > 20.0f)
+    if (error > 10.0f)
     {
         sum = 0.0f;
     }
-    if (error < -20.0f)
+    if (error < -10.0f)
     {
         sum = 0.0f;
     }
-
     if (init_waiting > 0)
     {
         sum = 0.0f;
@@ -940,29 +926,37 @@ float pid_pos_y(float target, float real)
     }
 
     d_error = 0.0 - real;
-    error_rate = d_error - pre_error;
+    error_rate = (d_error - pre_error) / dt;
     pre_error = d_error;
+
+    if (error > 6.0f)
+    {
+        error_rate = 6.0f;
+    }
+    if (error < -6.0f)
+    {
+        error_rate = -6.0f;
+    }
 
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = pos_pid_mat[1][0] * target + pos_pid_mat[1][1] * (error + pos_pid_mat[
-        1][2] * sum * 0.01 + pos_pid_mat[1][3] * d_out / 0.01);
+    result = pos_pid_mat[1][0] * target + pos_pid_mat[1][1] * (error + pos_pid_mat[1][2] * sum + pos_pid_mat[1][3] * d_out);
 
-    if (result > 15.0f)
+    if (result > 20.0f)
     {
-        result = 15.0f;
+        result = 20.0f;
     }
 
-    if (result < -15.0f)
+    if (result < -20.0f)
     {
-        result = -15.0f;
+        result = -20.0f;
     }
 
     return result;
 }
 
-float pid_pos_z(float target, float real)
+float pid_pos_z(float target, float real, double dt = 0.01)
 {
     static float error;
     static float sum;
@@ -975,35 +969,25 @@ float pid_pos_z(float target, float real)
 
     error = target - real;
 
-    if (error > 6.0f)
+    sum = sum + error * dt;
+
+    if (sum > 10.0f)
     {
-        error_rate = 6.0f;
+        sum = 10.0;
     }
-    if (error < -6.0f)
+    if (sum < -10.0f)
     {
-        error_rate = -6.0f;
+        sum = -10.0;
     }
 
-    sum = sum + error;
-
-    if (sum > 1000.0f)
-    {
-        sum = 1000.0;
-    }
-    if (sum < -1000.0f)
-    {
-        sum = -1000.0;
-    }
-
-    if (error > 20.0f)
+    if (error > 10.0f)
     {
         sum = 0.0f;
     }
-    if (error < -20.0f)
+    if (error < -10.0f)
     {
         sum = 0.0f;
     }
-
     if (init_waiting > 0)
     {
         sum = 0.0f;
@@ -1017,19 +1001,27 @@ float pid_pos_z(float target, float real)
     }
 
     d_error = 0.0 - real;
-    error_rate = d_error - pre_error;
+    error_rate = (d_error - pre_error) / dt;
     pre_error = d_error;
+
+    if (error > 6.0f)
+    {
+        error_rate = 6.0f;
+    }
+    if (error < -6.0f)
+    {
+        error_rate = -6.0f;
+    }
 
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = pos_pid_mat[2][0] * target + pos_pid_mat[2][1] * (error + pos_pid_mat[
-        2][2] * sum * 0.01 + pos_pid_mat[2][3] * d_out / 0.01);
+    result = pos_pid_mat[2][0] * target + pos_pid_mat[2][1] * (error + pos_pid_mat[2][2] * sum + pos_pid_mat[2][3] * d_out);
     
     if(weak_power_state){
-        if (result > 3.0f)
+        if (result > 4.0f)
         {
-            result = 3.0f;
+            result = 4.0f;
         }
 
         if (result < -6.0f)
@@ -1037,22 +1029,20 @@ float pid_pos_z(float target, float real)
             result = -6.0f;
         }
     }else{
-        if (result > 6.0f)
+        if (result > 10.0f)
         {
-            result = 6.0f;
+            result = 10.0f;
         }
     
-        if (result < -4.0f)
+        if (result < -5.0f)
         {
-            result = -4.0f;
+            result = -5.0f;
         }
     }
-    
-
     return result;
 }
 
-float pid_pos_yaw(float target, float real)
+float pid_pos_yaw(float target, float real, double dt = 0.01)
 {
     static float error;
     static float sum;
@@ -1074,39 +1064,22 @@ float pid_pos_yaw(float target, float real)
         error = error + 2.0 * PI;
     }
 
-    if (error > 6.0f)
-    {
-        error_rate = 6.0f;
-    }
-    if (error < -6.0f)
-    {
-        error_rate = -6.0f;
-    }
+    sum = sum + error * dt;
 
-    sum = sum + error;
-
-    if (sum > 1000.0f)
+    if (sum > 10.0f)
     {
-        sum = 1000.0;
+        sum = 10.0;
     }
-    if (sum < -1000.0f)
+    if (sum < -10.0f)
     {
-        sum = -1000.0;
-    }
-
-    if (error > 20.0f)
-    {
-        sum = 0.0f;
-    }
-    if (error < -20.0f)
-    {
-        sum = 0.0f;
+        sum = -10.0;
     }
 
     if (init_waiting > 0)
     {
         sum = 0.0f;
     }
+
     if (rc_mode != 0)
     {
         if (ctrl_mode != 2)
@@ -1116,31 +1089,36 @@ float pid_pos_yaw(float target, float real)
     }
 
     d_error = 0.0 - real;
-    error_rate = d_error - pre_error;
+    error_rate = (d_error - pre_error) / dt;
     pre_error = d_error;
+
+    if (error_rate > 1.0f)
+    {
+        error_rate = 1.0f;
+    }
+    if (error_rate < -1.0f)
+    {
+        error_rate = -1.0f;
+    }
 
     d_out = pid_N_v * error_rate + (1.0f - pid_N_v) * d_out_1;
     d_out_1 = d_out;
 
-    result = pos_pid_mat[3][0] * target + pos_pid_mat[3][1] * (error + pos_pid_mat[3][2] * sum * 0.01 + pos_pid_mat[3][
-        3] * d_out / 0.01);
+    result = pos_pid_mat[3][0] * target + pos_pid_mat[3][1] * (error + pos_pid_mat[3][2] * sum + pos_pid_mat[3][
+        3] * d_out);
 
-    if (result > 15.0f)
+    if (result > 10.0f)
     {
-        result = 15.0f;
+        result = 10.0f;
     }
-
-    if (result < -15.0f)
+    if (result < -10.0f)
     {
-        result = -15.0f;
+        result = -10.0f;
     }
 
     return result;
 }
 
-// float output_roll;
-// float output_pitch;
-// float output_yaw;
 float imu_roll;
 float imu_pitch;
 float imu_yaw;
@@ -1462,6 +1440,10 @@ Quaternion vector_to_quaternion(float input_vec[], float angle)
 
 void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
+    static double pre_time;
+    double imu_time = msg->header.stamp.toSec();
+    double dt = imu_time - pre_time;
+    pre_time = imu_time;
     float target_vel_body[3];
     if (ctrl_mode == 2 and rc_mode == 1)
     {
@@ -1490,9 +1472,9 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     measure_yaw = atan2(2.0 * (odom_pose.w * odom_pose.z + odom_pose.x * odom_pose.y),
                         1.0 - 2.0 * (odom_pose.y * odom_pose.y + odom_pose.z * odom_pose.z));
 
-    measure_world_pos[0] = applyButterworthFilter(&world_pos_x_filter, msg->pose.pose.position.x);
-    measure_world_pos[1] = applyButterworthFilter(&world_pos_y_filter, msg->pose.pose.position.y);
-    measure_world_pos[2] = applyButterworthFilter(&world_pos_z_filter, msg->pose.pose.position.z);
+    measure_world_pos[0] = msg->pose.pose.position.x;
+    measure_world_pos[1] = msg->pose.pose.position.y;
+    measure_world_pos[2] = msg->pose.pose.position.z;
     measure_world_pos[3] = measure_yaw;
 
     Quaternion yaw_quaternion = yaw_to_quaternion(measure_yaw);
@@ -1504,19 +1486,6 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
 
     double filtered_vel[3];
-
-    filtered_vel[0] = applyButterworthFilter(&world_vel_x_filter, world_measure_vel[0]);
-    filtered_vel[1] = applyButterworthFilter(&world_vel_y_filter, world_measure_vel[1]);
-    filtered_vel[2] = applyButterworthFilter(&world_vel_z_filter, world_measure_vel[2]);
-
-
-    world_measure_vel[0] = filtered_vel[0];
-    world_measure_vel[1] = filtered_vel[1];
-    world_measure_vel[2] = filtered_vel[2];
-
-    //	world_measure_vel[0] = processNotchFilter(&notch_vel_x, world_measure_vel[0]);
-    //    world_measure_vel[1] = processNotchFilter(&notch_vel_y, world_measure_vel[1]);
-    //    world_measure_vel[2] = processNotchFilter(&notch_vel_z, world_measure_vel[2]);
 
     float world_target_vel[3];
     World_to_Body(target_vel_body, world_target_vel, body_to_yaw);
@@ -1532,9 +1501,9 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
             {
                 if (!isnan(tf_cmd[2]))
                 {
-                    world_target_vel[0] = pid_pos_x(tf_cmd[0], measure_world_pos[0]);
-                    world_target_vel[1] = pid_pos_y(tf_cmd[1], measure_world_pos[1]);
-                    world_target_vel[2] = pid_pos_z(tf_cmd[2], measure_world_pos[2]);
+                    world_target_vel[0] = pid_pos_x(tf_cmd[0], measure_world_pos[0], dt);
+                    world_target_vel[1] = pid_pos_y(tf_cmd[1], measure_world_pos[1], dt);
+                    world_target_vel[2] = pid_pos_z(tf_cmd[2], measure_world_pos[2], dt);
                 }
             }
         }
@@ -1557,9 +1526,9 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
         }
     }
 
-    world_force[0] = pid_vx(world_target_vel[0], world_measure_vel[0]);
-    world_force[1] = pid_vy(world_target_vel[1], world_measure_vel[1]);
-    world_force[2] = pid_vz(world_target_vel[2], world_measure_vel[2]);
+    world_force[0] = pid_vx(world_target_vel[0], world_measure_vel[0], dt);
+    world_force[1] = pid_vy(world_target_vel[1], world_measure_vel[1], dt);
+    world_force[2] = pid_vz(world_target_vel[2], world_measure_vel[2], dt);
 
     std_msgs::Float32 rate_msg;
 
@@ -1603,7 +1572,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     {
         if (!isnan(tf_cmd[9]))
         {
-            target_w_yaw = pid_pos_yaw(tf_cmd[9], measure_world_pos[3]);
+            target_w_yaw = pid_pos_yaw(tf_cmd[9], measure_world_pos[3], dt);
         }
         else
         {
@@ -1708,7 +1677,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
     static double pre_time;
-    double imu_time = ros::Time::now().toSec();
+    double imu_time = msg->header.stamp.toSec();
     double dt = imu_time - pre_time;
     pre_time = imu_time;
     measure_quaternion.w = msg->orientation.w;
@@ -2099,7 +2068,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             if (point_distance(start_pose, measure_world_pos) < 2.0)
             {
                 mission_cnt = mission_cnt+1;
-                if (mission_cnt > 10)
+                if (mission_cnt > 20)
                 {
                     mission_cnt = 0;
                     init_waiting = 2;

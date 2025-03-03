@@ -238,7 +238,6 @@ typedef struct
     double y1, y2; // 输出状态
 } ButterworthFilter;
 
-// 初始化巴特沃斯低通滤波器
 void initButterworthFilter(ButterworthFilter* filter, double sampleRate, double cutoffFreq)
 {
     double omega_c = 2.0 * 3.14159265359 * cutoffFreq / sampleRate;
@@ -266,43 +265,41 @@ void initButterworthFilter(ButterworthFilter* filter, double sampleRate, double 
     filter->y2 = 0;
 }
 
-// 应用滤波器
 double applyButterworthFilter(ButterworthFilter* filter, double input)
 {
-    // 计算输出
     double output = filter->b0 * input + filter->b1 * filter->x1 + filter->b2 * filter->x2 - filter->a1 * filter->y1 -
         filter->a2 * filter->y2;
-
-    // 更新状态
     filter->x2 = filter->x1;
     filter->x1 = input;
     filter->y2 = filter->y1;
     filter->y1 = output;
-
     return output;
 }
 
 class KalmanFilter {
 public:
-    KalmanFilter(double process_noise, double measurement_noise, double dt = 0.01) {
-        initButterworthFilter(&gps_measure_filter, 10.0, 2.5);
-        initButterworthFilter(&acc_filter, 100.0, 25.0);
+    KalmanFilter() {
+        initButterworthFilter(&gps_pos_filter, 10.0, 2.5);
+        initButterworthFilter(&gps_vel_filter, 10.0, 2.0);
 
-        initButterworthFilter(&vel_filter, 110.0, 20.0);
-        initButterworthFilter(&pos_filter, 110.0, 25.0);
-        this->dt = dt;
+        initButterworthFilter(&imu_pos_filter, 100.0, 25.0);
+        initButterworthFilter(&imu_vel_filter, 100.0, 20.0);
     }
 
-    void predict(double acceleration) {
-        // acceleration = applyButterworthFilter(&acc_filter, acceleration);
-        x(1) = applyButterworthFilter(&vel_filter, x(1) + acceleration * dt);
-        x(0) = applyButterworthFilter(&pos_filter, x(0) + x(1) * dt + 0.5 * acceleration * dt * dt);
+    void predict(double acceleration, ros::Time imu_stamp) {
+        double real_dt = (imu_stamp - last_imu_stamp).toSec();
+        last_imu_stamp = imu_stamp;
+
+        x(1) = applyButterworthFilter(&imu_vel_filter, x(1) + acceleration * real_dt);
+        x(0) = applyButterworthFilter(&imu_pos_filter, x(0) + x(1) * real_dt + 0.5 * acceleration * real_dt * real_dt);
     }
 
-    void update(double position_measurement) {
-        // position_measurement = applyButterworthFilter(&gps_measure_filter, position_measurement);
-        x(0) = applyButterworthFilter(&pos_filter, position_measurement);
-        x(1) = applyButterworthFilter(&vel_filter, (x(0) - pre_measurement) / 0.1);
+    void update(double position_measurement, ros::Time gps_stamp) {
+        double real_dt = (gps_stamp - last_gps_stamp).toSec();
+        last_gps_stamp = gps_stamp;
+
+        x(0) = applyButterworthFilter(&gps_pos_filter, position_measurement);
+        x(1) = applyButterworthFilter(&gps_vel_filter, (x(0) - pre_measurement) / real_dt);
         pre_measurement = x(0);
     }
 
@@ -311,13 +308,13 @@ public:
     }
 
 private:
-    ButterworthFilter gps_measure_filter;
-    ButterworthFilter acc_filter;
-    ButterworthFilter vel_filter;
-    ButterworthFilter pos_filter;
-
+    ros::Time last_gps_stamp;
+    ros::Time last_imu_stamp;
+    ButterworthFilter gps_pos_filter;
+    ButterworthFilter gps_vel_filter;
+    ButterworthFilter imu_pos_filter;
+    ButterworthFilter imu_vel_filter;
     double pre_measurement;
-    double dt;
     Eigen::Vector2d x;
 };
 
@@ -478,9 +475,9 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
     // route_cloud->points.push_back(new_point);
 
-    if(rc_channel[5] < -100){
-      outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
-    }
+    // if(rc_channel[5] < -100){
+    //   outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
+    // }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -539,9 +536,9 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     odom_msg.header.stamp = ros::Time::now();
     uwb_map_pub.publish(odom_msg);
 
-    kalman_filters[0].update(odom_msg.pose.pose.position.x);
-    kalman_filters[1].update(odom_msg.pose.pose.position.y);
-    kalman_filters[2].update(odom_msg.pose.pose.position.z);
+    kalman_filters[0].update(odom_msg.pose.pose.position.x, msg->header.stamp);
+    kalman_filters[1].update(odom_msg.pose.pose.position.y, msg->header.stamp);
+    kalman_filters[2].update(odom_msg.pose.pose.position.z, msg->header.stamp);
 }
 
 double zero[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -702,9 +699,9 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
     // std::cout<<"acc world z"<< acc_world.z()<<std::endl;
 
-    kalman_filters[0].predict(acc_world.x());
-    kalman_filters[1].predict(acc_world.y());
-    kalman_filters[2].predict(acc_world.z());
+    kalman_filters[0].predict(acc_world.x(), msg->header.stamp);
+    kalman_filters[1].predict(acc_world.y(), msg->header.stamp);
+    kalman_filters[2].predict(acc_world.z(), msg->header.stamp);
 
     auto state_x = kalman_filters[0].getState();
     auto state_y = kalman_filters[1].getState();
@@ -712,7 +709,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
     //std::cout << "x: " << state_x(0)<<", "<< state_x(1) << " y: " << state_y(0)<<", "<< state_y(1) << " z: " << state_z(0)<<", "<< state_z(1) << std::endl;
     nav_msgs::Odometry odom_msg;
-    odom_msg.header.stamp = ros::Time::now();
+    odom_msg.header.stamp = msg->header.stamp;
     odom_msg.header.frame_id = "map";
     odom_msg.child_frame_id = "base_link";
 
@@ -760,7 +757,7 @@ void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 
 void rviz_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg) {
     ROS_INFO("Clicked point: [%f, %f, %f]", msg->point.x, msg->point.y, msg->point.z);
-    outFile << msg->point.x << ", " << msg->point.y << ", " << msg->point.z << std::endl;
+    //outFile << msg->point.x << ", " << msg->point.y << ", " << msg->point.z << std::endl;
 }
 
 void project2plane_callback(const ros::TimerEvent&)
@@ -896,16 +893,16 @@ int main(int argc, char** argv)
     mahony_quaternion[2] = 0.0;
     mahony_quaternion[3] = 0.0;
     // pcl::io::loadPCDFile<pcl::PointXYZ>("/home/tc/route.pcd", *route_cloud);
-    outFile.open("/home/tc/route_point.route", std::ios::app);
+    //outFile.open("/home/tc/route_point.route", std::ios::app);
     std::cout<<"init filters"<<std::endl;
-    kalman_filters.push_back(KalmanFilter(1e-5, 0.1));
-    kalman_filters.push_back(KalmanFilter(1e-5, 0.1));
-    kalman_filters.push_back(KalmanFilter(1e-5, 0.1));
+    kalman_filters.push_back(KalmanFilter());
+    kalman_filters.push_back(KalmanFilter());
+    kalman_filters.push_back(KalmanFilter());
     std::cout<<"init filters ok"<<std::endl;
     ros::spin();
     // route_cloud->width = route_cloud->points.size();
     // route_cloud->height = 1;
     // pcl::io::savePCDFileASCII("/home/tc/route.pcd", *route_cloud);
-    outFile.close();
+    //outFile.close();
     return 0;
 }
