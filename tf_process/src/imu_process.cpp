@@ -282,24 +282,37 @@ public:
         initButterworthFilter(&gps_pos_filter, 10.0, 2.5);
         initButterworthFilter(&gps_vel_filter, 10.0, 2.0);
 
-        initButterworthFilter(&imu_pos_filter, 100.0, 25.0);
-        initButterworthFilter(&imu_vel_filter, 100.0, 20.0);
+        initButterworthFilter(&imu_pos_filter, 110.0, 35.0);
+        initButterworthFilter(&imu_vel_filter, 110.0, 25.0);
+
+        x(0) = 0.0;
+        x(1) = 0.0;
+
+        inited = 0;
     }
 
     void predict(double acceleration, ros::Time imu_stamp) {
+        if(inited < 5){
+            x(1) = 0.0;
+            return;
+        }
         double real_dt = (imu_stamp - last_imu_stamp).toSec();
         last_imu_stamp = imu_stamp;
 
-        x(1) = applyButterworthFilter(&imu_vel_filter, x(1) + acceleration * real_dt);
-        x(0) = applyButterworthFilter(&imu_pos_filter, x(0) + x(1) * real_dt + 0.5 * acceleration * real_dt * real_dt);
+        x(1) = applyButterworthFilter(&gps_vel_filter, x(1) + acceleration * real_dt);
+        x(0) = applyButterworthFilter(&gps_pos_filter, x(0) + x(1) * real_dt + 0.5 * acceleration * real_dt * real_dt);
     }
 
     void update(double position_measurement, ros::Time gps_stamp) {
+        if(inited < 5){
+            inited = inited + 1;
+            return;
+        }
         double real_dt = (gps_stamp - last_gps_stamp).toSec();
         last_gps_stamp = gps_stamp;
 
-        x(0) = applyButterworthFilter(&gps_pos_filter, position_measurement);
-        x(1) = applyButterworthFilter(&gps_vel_filter, (x(0) - pre_measurement) / real_dt);
+        x(0) = applyButterworthFilter(&imu_pos_filter, position_measurement);
+        x(1) = applyButterworthFilter(&imu_vel_filter, (x(0) - pre_measurement) / real_dt);
         pre_measurement = x(0);
     }
 
@@ -308,6 +321,7 @@ public:
     }
 
 private:
+    int inited;
     ros::Time last_gps_stamp;
     ros::Time last_imu_stamp;
     ButterworthFilter gps_pos_filter;

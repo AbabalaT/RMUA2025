@@ -32,7 +32,7 @@ float end_by_pose[3];
 float tf_cmd[11];
 float no_g_acc[3];
 
-int init_waiting = 100;
+int init_waiting = 200;
 
 bool offboard_disable = false;
 
@@ -203,27 +203,27 @@ void pid_init(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.024f;
-    velocity_pid_mat[1][2] = 0.01;
-    velocity_pid_mat[1][3] = 0.12;
+    velocity_pid_mat[1][1] = 0.012f;
+    velocity_pid_mat[1][2] = 0.0;
+    velocity_pid_mat[1][3] = 0.04;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.032f;
-    velocity_pid_mat[2][2] = 0.04f;
-    velocity_pid_mat[2][3] = 0.012f;
+    velocity_pid_mat[2][1] = 0.016f;
+    velocity_pid_mat[2][2] = 0.0f;
+    velocity_pid_mat[2][3] = 0.06f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 1.25;
+    pos_pid_mat[0][1] = 0.8;
     pos_pid_mat[0][2] = 1.4;
     pos_pid_mat[0][3] = 0.45;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 1.25;
+    pos_pid_mat[1][1] = 0.8;
     pos_pid_mat[1][2] = 1.4;
     pos_pid_mat[1][3] = 0.45;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 1.28;
+    pos_pid_mat[2][1] = 0.86;
     pos_pid_mat[2][2] = 1.4;
     pos_pid_mat[2][3] = 0.45;
 
@@ -263,29 +263,29 @@ void pid_weak(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.072f;
-    velocity_pid_mat[1][2] = 0.01;
-    velocity_pid_mat[1][3] = 0.12;
+    velocity_pid_mat[1][1] = 0.030f;
+    velocity_pid_mat[1][2] = 0.0;
+    velocity_pid_mat[1][3] = 0.16;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.12f;
-    velocity_pid_mat[2][2] = 0.01f;
-    velocity_pid_mat[2][3] = 0.12f;
+    velocity_pid_mat[2][1] = 0.040f;
+    velocity_pid_mat[2][2] = 0.0f;
+    velocity_pid_mat[2][3] = 0.24f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 1.3;
-    pos_pid_mat[0][2] = 1.2;
-    pos_pid_mat[0][3] = 0.45;
+    pos_pid_mat[0][1] = 0.8;
+    pos_pid_mat[0][2] = 0.5;
+    pos_pid_mat[0][3] = 0.6;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 1.3;
-    pos_pid_mat[1][2] = 1.2;
-    pos_pid_mat[1][3] = 0.45;
+    pos_pid_mat[1][1] = 0.8;
+    pos_pid_mat[1][2] = 0.5;
+    pos_pid_mat[1][3] = 0.6;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 1.3;
-    pos_pid_mat[2][2] = 1.2;
-    pos_pid_mat[2][3] = 0.45;
+    pos_pid_mat[2][1] = 0.6;
+    pos_pid_mat[2][2] = 0.5;
+    pos_pid_mat[2][3] = 0.6;
 
     pos_pid_mat[3][0] = 0.0;
     pos_pid_mat[3][1] = 2.0;
@@ -1351,13 +1351,13 @@ BasicControl::BasicControl(ros::NodeHandle* nh)
     planner_acc_limit_publisher = nh->advertise<std_msgs::Float32>("/exe/acc_limit", 10);
     planner_vel_limit_publisher = nh->advertise<std_msgs::Float32>("/exe/vel_limit", 10);
 
-    initButterworthFilter(&world_vel_x_filter, 98.0, 1.25);
-    initButterworthFilter(&world_vel_y_filter, 98.0, 1.25);
-    initButterworthFilter(&world_vel_z_filter, 98.0, 1.25);
+    initButterworthFilter(&world_vel_x_filter, 100.0, 1.25);
+    initButterworthFilter(&world_vel_y_filter, 100.0, 1.25);
+    initButterworthFilter(&world_vel_z_filter, 100.0, 1.25);
 
-    initButterworthFilter(&world_pos_x_filter, 98.0, 1.25);
-    initButterworthFilter(&world_pos_y_filter, 98.0, 1.25);
-    initButterworthFilter(&world_pos_z_filter, 98.0, 1.25);
+    initButterworthFilter(&world_pos_x_filter, 100.0, 1.25);
+    initButterworthFilter(&world_pos_y_filter, 100.0, 1.25);
+    initButterworthFilter(&world_pos_z_filter, 100.0, 1.25);
 
     rc_mode_timer = nh->createTimer(ros::Duration(0.05),
                                     std::bind(&BasicControl::rc_mode_check_callback, this, std::placeholders::_1));
@@ -1443,6 +1443,14 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     static double pre_time;
     double imu_time = msg->header.stamp.toSec();
     double dt = imu_time - pre_time;
+
+    if(dt < 0.003){
+        dt = 0.003;
+    }
+    if(dt > 0.03){
+        dt = 0.03;
+    }
+
     pre_time = imu_time;
     float target_vel_body[3];
     if (ctrl_mode == 2 and rc_mode == 1)
@@ -1460,7 +1468,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     float body_measure_vel[3];
     body_measure_vel[0] = msg->twist.twist.linear.x;
     body_measure_vel[1] = msg->twist.twist.linear.y;
-    body_measure_vel[2] = msg->twist.twist.linear.z;
+    body_measure_vel[2] = msg->twist.twist.linear.z;    
 
     Quaternion odom_pose;
     odom_pose.w = msg->pose.pose.orientation.w;
@@ -1472,9 +1480,9 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     measure_yaw = atan2(2.0 * (odom_pose.w * odom_pose.z + odom_pose.x * odom_pose.y),
                         1.0 - 2.0 * (odom_pose.y * odom_pose.y + odom_pose.z * odom_pose.z));
 
-    measure_world_pos[0] = msg->pose.pose.position.x;
-    measure_world_pos[1] = msg->pose.pose.position.y;
-    measure_world_pos[2] = msg->pose.pose.position.z;
+    measure_world_pos[0] = applyButterworthFilter(&world_pos_x_filter, msg->pose.pose.position.x);
+    measure_world_pos[1] = applyButterworthFilter(&world_pos_y_filter, msg->pose.pose.position.y);
+    measure_world_pos[2] = applyButterworthFilter(&world_pos_z_filter, msg->pose.pose.position.z);
     measure_world_pos[3] = measure_yaw;
 
     Quaternion yaw_quaternion = yaw_to_quaternion(measure_yaw);
@@ -1486,6 +1494,14 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     World_to_Body(body_measure_vel, world_measure_vel, body_to_world);
 
     double filtered_vel[3];
+    filtered_vel[0] = applyButterworthFilter(&world_vel_x_filter, world_measure_vel[0]);
+    filtered_vel[1] = applyButterworthFilter(&world_vel_y_filter, world_measure_vel[1]);
+    filtered_vel[2] = applyButterworthFilter(&world_vel_z_filter, world_measure_vel[2]);
+
+
+    world_measure_vel[0] = filtered_vel[0];
+    world_measure_vel[1] = filtered_vel[1];
+    world_measure_vel[2] = filtered_vel[2];
 
     float world_target_vel[3];
     World_to_Body(target_vel_body, world_target_vel, body_to_yaw);
@@ -1587,39 +1603,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
         {
             target_w_yaw = -1.6;
         }
-        //		if(!isnan(tf_cmd[10])){
-        //			target_w_yaw += tf_cmd[10];
-        //		}
     }
-
-    //	float target_mag_vel = mag_vector(world_target_vel);
-    //   	float measure_mag_vel = mag_vector(world_measure_vel);
-    //    float error_mag_vel = target_mag_vel - measure_mag_vel;
-    //
-    //    float mag_output;//TODO:PID for error_mag_vel
-    //
-    //    float v_target_norm[3];
-    //    float v_measure_norm[3];
-    //
-    //   	normalize_vec(world_target_vel, v_target_norm);
-    //    normalize_vec(world_measure_vel, v_measure_norm);
-    //
-    //    float dot = dot_product(v_target_norm, v_measure_norm);
-    //    if(dot > 1.0f){
-    //    	dot = 1.0f;
-    //    }
-    //    float angle_error = acos(dot);
-    //
-    //	float w_output;//TODO:PID for error_angle
-    //
-    //    if(angle > 0.0f){
-    //		float axis_cross[3];
-    //        cross_product(v_measure_norm, v_target_norm, axis_cross);
-    //        float norm_axis_cross[3];
-    //        normalize_vec(axis_cross, norm_axis_cross);
-    //		Quaternion roation_quat = vector_to_quaternion(norm_axis_cross, angle);
-    //    }
-
 
     world_force[2] = world_force[2] + hover_throttle;
     if (world_force[2] < 0.01f)
@@ -1679,6 +1663,14 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     static double pre_time;
     double imu_time = msg->header.stamp.toSec();
     double dt = imu_time - pre_time;
+
+    if(dt < 0.003){
+        dt = 0.003;
+    }
+    if(dt > 0.03){
+        dt = 0.03;
+    }
+
     pre_time = imu_time;
     measure_quaternion.w = msg->orientation.w;
     measure_quaternion.x = msg->orientation.x;
@@ -1726,28 +1718,41 @@ void BasicControl::imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
         temp_quaternion = roll_to_quaternion(target_angle_roll);
         target_quaternion = multiply_quaternion(&target_quaternion, &temp_quaternion);
     }
-    //	std::cout << target_quaternion.w << " " << target_quaternion.x << " " << target_quaternion.y << " " << target_quaternion.z << std::endl;
 
     Quaternion diff_quaternion = quaternion_diff(de_yaw_ahrs, target_quaternion);
-
     quaternionToAngles(diff_quaternion, &error_angle[0], &error_angle[1], &error_angle[2]);
-    if (isnan(error_angle[0]))
-    {
-        error_angle[0] = 0.0f;
-    }
-    if (isnan(error_angle[1]))
-    {
-        error_angle[1] = 0.0f;
-    }
-    if (isnan(error_angle[2]))
-    {
-        error_angle[2] = 0.0f;
-    }
     World_to_Body(error_angle, error_body, de_yaw_ahrs);
+
+    if (isnan(error_body[0]))
+    {
+        error_body[0] = 0.0f;
+    }
+    if (isnan(error_body[1]))
+    {
+        error_body[1] = 0.0f;
+    }
+    if (isnan(error_body[2]))
+    {
+        error_body[2] = 0.0f;
+    }
+
     w_yaw_world[0] = 0.0f;
     w_yaw_world[1] = 0.0f;
     w_yaw_world[2] = target_w_yaw;
     World_to_Body(w_yaw_world, w_yaw_body, measure_quaternion);
+
+    if (isnan(w_yaw_body[0]))
+    {
+        w_yaw_body[0] = 0.0f;
+    }
+    if (isnan(w_yaw_body[1]))
+    {
+        w_yaw_body[1] = 0.0f;
+    }
+    if (isnan(w_yaw_body[2]))
+    {
+        w_yaw_body[2] = 0.0f;
+    }
 
     target_velocity_roll = pid_angle_roll(error_body[0], dt) + w_yaw_body[0];
     target_velocity_pitch = -pid_angle_pitch(error_body[1], dt) - w_yaw_body[1];
@@ -1969,7 +1974,6 @@ void BasicControl::rc_mode_check_callback(const ros::TimerEvent& event)
 {
     if (init_waiting > 0)
     {
-        //    init_waiting = 0;
         init_waiting--;
     }
     int got_mode;
@@ -2065,13 +2069,13 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         //wait ukf init
         if (mission_step == 1)
         {
-            if (point_distance(start_pose, measure_world_pos) < 2.0)
+            if (point_distance(start_pose, measure_world_pos) < 5.0)
             {
                 mission_cnt = mission_cnt+1;
-                if (mission_cnt > 20)
+                if (mission_cnt > 50)
                 {
                     mission_cnt = 0;
-                    init_waiting = 2;
+                    init_waiting = 0;
                     mission_step = 2;
                 }
             }
@@ -2114,7 +2118,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         //take off detection
         if(mission_step == 3){
-            if (point_distance(target_world_pos, measure_world_pos) < 0.4)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 geometry_msgs::TransformStamped base2plane;
                 try
@@ -2167,7 +2171,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         if (mission_step == 104)
         {
-            if (point_distance(target_world_pos, measure_world_pos) < 0.4)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 target_world_pos[0] = start_by_pose[0];
                 target_world_pos[1] = start_by_pose[1];
@@ -2193,7 +2197,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             return;
         }
         if(mission_step == 105){
-            if (point_distance(target_world_pos, measure_world_pos) < 0.3)
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
@@ -2406,11 +2410,11 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             tf_cmd[7] = NAN;
             tf_cmd[8] = NAN;
 
-            if (point_distance(target_world_pos, measure_world_pos) < 1.5)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 target_world_pos[0] = end_pose[0];
                 target_world_pos[1] = end_pose[1];
-                target_world_pos[2] = end_pose[2] + 0.5;
+                target_world_pos[2] = end_pose[2] + 1.0;
 
                 tf_cmd[0] = target_world_pos[0];
                 tf_cmd[1] = target_world_pos[1];
@@ -2449,7 +2453,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     if(point_distance(measure_world_pos, target_world_pos) > 5.0){
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
-                        tf_cmd[5] = -3.0;
+                        tf_cmd[5] = 0.0;
                     }
                 }
             }
@@ -2512,7 +2516,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
 
         if(mission_step == 7){
-            if (point_distance(target_world_pos, measure_world_pos) < 0.3)
+            if (point_distance(target_world_pos, measure_world_pos) < 0.5)
             {
                 target_world_pos[0] = start_by_pose[0];
                 target_world_pos[1] = start_by_pose[1];
