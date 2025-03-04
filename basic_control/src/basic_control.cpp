@@ -204,13 +204,13 @@ void pid_init(void)
 
     velocity_pid_mat[1][0] = 0.0;
     velocity_pid_mat[1][1] = 0.01f;
-    velocity_pid_mat[1][2] = 0.001;
-    velocity_pid_mat[1][3] = 0.04;
+    velocity_pid_mat[1][2] = 0.0;
+    velocity_pid_mat[1][3] = 0.0001;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.012f;
-    velocity_pid_mat[2][2] = 0.00015f;
-    velocity_pid_mat[2][3] = 0.06f;
+    velocity_pid_mat[2][1] = 0.04f;
+    velocity_pid_mat[2][2] = 0.0f;
+    velocity_pid_mat[2][3] = 0.0001f;
 
     pos_pid_mat[0][0] = 0.0;
     pos_pid_mat[0][1] = 0.4;
@@ -268,9 +268,9 @@ void pid_weak(void)
     velocity_pid_mat[1][3] = 0.16;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.040f;
-    velocity_pid_mat[2][2] = 0.004f;
-    velocity_pid_mat[2][3] = 0.24f;
+    velocity_pid_mat[2][1] = 0.064f;
+    velocity_pid_mat[2][2] = 0.00f;
+    velocity_pid_mat[2][3] = 0.1f;
 
     pos_pid_mat[0][0] = 0.0;
     pos_pid_mat[0][1] = 0.3;
@@ -770,7 +770,7 @@ float pid_vz(float target, float real, double dt = 0.01)
     {
         sum = -30.0;
     }
-
+    
     if (init_waiting > 0)
     {
         sum = 0.0f;
@@ -971,13 +971,13 @@ float pid_pos_z(float target, float real, double dt = 0.01)
 
     sum = sum + error * dt;
 
-    if (sum > 10.0f)
+    if (sum > 5.0f)
     {
-        sum = 10.0;
+        sum = 5.0;
     }
-    if (sum < -10.0f)
+    if (sum < -5.0f)
     {
-        sum = -10.0;
+        sum = -5.0;
     }
 
     if (error > 10.0f)
@@ -2113,7 +2113,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             // limit_msg.data = 15.0;
             // planner_vel_limit_publisher.publish(limit_msg);
 
-            mission_step = 3;
+            mission_step = 999;//TODO if not test ps
             return;
         }
         //take off detection
@@ -2270,7 +2270,11 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
                         tf_cmd[5] = 4.0;
+                    }else{
+                        tf_cmd[5] = 0.0;
                     }
+                }else{
+                    tf_cmd[5] = 0.0;
                 }
                 
             }
@@ -2486,11 +2490,15 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 planner_vel_limit_publisher.publish(limit_msg);
             }else{
                 if (measure_world_pos[2] < 190.0){
-                    if(point_distance(measure_world_pos, target_world_pos) > 5.0){
+                    if(measure_world_pos[2] > target_world_pos[2] + 5.0){
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
-                        tf_cmd[5] = -6.0;
+                        tf_cmd[5] = -8.0;
+                    }else{
+                        tf_cmd[5] = 0.0;
                     }
+                }else{
+                    tf_cmd[5] = 0.0;
                 }
             }
             return;
@@ -2577,22 +2585,22 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 path_point.pose.position.z = 190.0;
                 path_point.pose.orientation.w = 1.0;
                 direct_path.poses.push_back(path_point);
-
                 exe_path_publisher.publish(direct_path);
 
-                
-
                 mission_step = 8001;
-                
                 tf_cmd[5] = NAN;
+
             }else{
-                if (point_distance(measure_world_pos, end_by_pose) > 5.0){
-                    if(point_distance(measure_world_pos, target_world_pos) > 5.0){
+                if (measure_world_pos[2] > end_by_pose[2] + 5.0){
+                    if(measure_world_pos[2] < target_world_pos[2] - 5.0){
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
                         tf_cmd[5] = 10.0;
-                        //std::cout<<"lift boost"<<std::endl;
+                    }else{
+                        tf_cmd[5] = 0.0;
                     }
+                }else{
+                    tf_cmd[5] = 0.0;
                 }
                 
             }
@@ -2677,8 +2685,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     if(point_distance(measure_world_pos, target_world_pos) > 5.0){
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
-                        tf_cmd[5] = -3.0;
+                        tf_cmd[5] = 0.0;
+                    }else{
+                        tf_cmd[5] = 0.0;
                     }
+                }else{
+                    tf_cmd[5] = 0.0;
                 }
                 
             }
