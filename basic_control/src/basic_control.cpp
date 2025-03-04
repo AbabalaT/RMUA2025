@@ -203,29 +203,29 @@ void pid_init(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.01f;
+    velocity_pid_mat[1][1] = 0.03f;
     velocity_pid_mat[1][2] = 0.0;
     velocity_pid_mat[1][3] = 0.0001;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.04f;
+    velocity_pid_mat[2][1] = 0.03f;
     velocity_pid_mat[2][2] = 0.0f;
     velocity_pid_mat[2][3] = 0.0001f;
 
     pos_pid_mat[0][0] = 0.0;
     pos_pid_mat[0][1] = 0.4;
-    pos_pid_mat[0][2] = 1.4;
-    pos_pid_mat[0][3] = 0.45;
+    pos_pid_mat[0][2] = 0.1;
+    pos_pid_mat[0][3] = 0.1;
 
     pos_pid_mat[1][0] = 0.0;
     pos_pid_mat[1][1] = 0.4;
-    pos_pid_mat[1][2] = 1.4;
-    pos_pid_mat[1][3] = 0.45;
+    pos_pid_mat[1][2] = 0.1;
+    pos_pid_mat[1][3] = 0.1;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 0.42;
-    pos_pid_mat[2][2] = 1.4;
-    pos_pid_mat[2][3] = 0.45;
+    pos_pid_mat[2][1] = 0.4;
+    pos_pid_mat[2][2] = 0.1;
+    pos_pid_mat[2][3] = 0.1;
 
     pos_pid_mat[3][0] = 0.0;
     pos_pid_mat[3][1] = 6.0;
@@ -263,29 +263,29 @@ void pid_weak(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.030f;
-    velocity_pid_mat[1][2] = 0.002;
-    velocity_pid_mat[1][3] = 0.16;
+    velocity_pid_mat[1][1] = 0.045f;
+    velocity_pid_mat[1][2] = 0.00;
+    velocity_pid_mat[1][3] = 0.01;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.064f;
+    velocity_pid_mat[2][1] = 0.045f;
     velocity_pid_mat[2][2] = 0.00f;
-    velocity_pid_mat[2][3] = 0.1f;
+    velocity_pid_mat[2][3] = 0.01f;
 
     pos_pid_mat[0][0] = 0.0;
     pos_pid_mat[0][1] = 0.3;
-    pos_pid_mat[0][2] = 0.5;
-    pos_pid_mat[0][3] = 0.3;
+    pos_pid_mat[0][2] = 0.1;
+    pos_pid_mat[0][3] = 0.1;
 
     pos_pid_mat[1][0] = 0.0;
     pos_pid_mat[1][1] = 0.3;
-    pos_pid_mat[1][2] = 0.5;
-    pos_pid_mat[1][3] = 0.3;
+    pos_pid_mat[1][2] = 0.1;
+    pos_pid_mat[1][3] = 0.1;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 0.4;
-    pos_pid_mat[2][2] = 0.5;
-    pos_pid_mat[2][3] = 0.3;
+    pos_pid_mat[2][1] = 0.3;
+    pos_pid_mat[2][2] = 0.1;
+    pos_pid_mat[2][3] = 0.1;
 
     pos_pid_mat[3][0] = 0.0;
     pos_pid_mat[3][1] = 2.0;
@@ -2113,7 +2113,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             // limit_msg.data = 15.0;
             // planner_vel_limit_publisher.publish(limit_msg);
 
-            mission_step = 999;//TODO if not test ps
+            mission_step = 3;//TODO if not test ps
             return;
         }
         //take off detection
@@ -2438,7 +2438,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         {
             target_world_pos[0] = end_by_pose[0];
             target_world_pos[1] = end_by_pose[1];
-            target_world_pos[2] = end_by_pose[2] + 1.5;
+            target_world_pos[2] = end_by_pose[2];
 
             tf_cmd[0] = target_world_pos[0];
             tf_cmd[1] = target_world_pos[1];
@@ -2454,7 +2454,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 target_world_pos[0] = end_pose[0];
                 target_world_pos[1] = end_pose[1];
-                target_world_pos[2] = end_pose[2] + 3.0;
+                target_world_pos[2] = end_pose[2] + 1.5;
                 force_weak_power_mode = false;
                 tf_cmd[0] = target_world_pos[0];
                 tf_cmd[1] = target_world_pos[1];
@@ -2509,7 +2509,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
-                target_world_pos[2] = end_by_pose[2] + 1.5;
+                target_world_pos[2] = end_by_pose[2];
 
                 tf_cmd[0] = target_world_pos[0];
                 tf_cmd[1] = target_world_pos[1];
@@ -2651,7 +2651,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             
             target_world_pos[0] = start_by_pose[0];
             target_world_pos[1] = start_by_pose[1];
-            target_world_pos[2] = start_by_pose[2] + 1.5;
+            target_world_pos[2] = start_by_pose[2];
 
             tf_cmd[0] = target_world_pos[0];
             tf_cmd[1] = target_world_pos[1];
