@@ -203,27 +203,27 @@ void pid_init(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.012f;
-    velocity_pid_mat[1][2] = 0.0;
+    velocity_pid_mat[1][1] = 0.01f;
+    velocity_pid_mat[1][2] = 0.001;
     velocity_pid_mat[1][3] = 0.04;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.016f;
-    velocity_pid_mat[2][2] = 0.0f;
+    velocity_pid_mat[2][1] = 0.012f;
+    velocity_pid_mat[2][2] = 0.00015f;
     velocity_pid_mat[2][3] = 0.06f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 0.8;
+    pos_pid_mat[0][1] = 0.4;
     pos_pid_mat[0][2] = 1.4;
     pos_pid_mat[0][3] = 0.45;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 0.8;
+    pos_pid_mat[1][1] = 0.4;
     pos_pid_mat[1][2] = 1.4;
     pos_pid_mat[1][3] = 0.45;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 0.86;
+    pos_pid_mat[2][1] = 0.42;
     pos_pid_mat[2][2] = 1.4;
     pos_pid_mat[2][3] = 0.45;
 
@@ -264,28 +264,28 @@ void pid_weak(void)
 
     velocity_pid_mat[1][0] = 0.0;
     velocity_pid_mat[1][1] = 0.030f;
-    velocity_pid_mat[1][2] = 0.0;
+    velocity_pid_mat[1][2] = 0.002;
     velocity_pid_mat[1][3] = 0.16;
 
     velocity_pid_mat[2][0] = 0.0;
     velocity_pid_mat[2][1] = 0.040f;
-    velocity_pid_mat[2][2] = 0.0f;
+    velocity_pid_mat[2][2] = 0.004f;
     velocity_pid_mat[2][3] = 0.24f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 0.8;
+    pos_pid_mat[0][1] = 0.3;
     pos_pid_mat[0][2] = 0.5;
-    pos_pid_mat[0][3] = 0.6;
+    pos_pid_mat[0][3] = 0.3;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 0.8;
+    pos_pid_mat[1][1] = 0.3;
     pos_pid_mat[1][2] = 0.5;
-    pos_pid_mat[1][3] = 0.6;
+    pos_pid_mat[1][3] = 0.3;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 0.6;
+    pos_pid_mat[2][1] = 0.4;
     pos_pid_mat[2][2] = 0.5;
-    pos_pid_mat[2][3] = 0.6;
+    pos_pid_mat[2][3] = 0.3;
 
     pos_pid_mat[3][0] = 0.0;
     pos_pid_mat[3][1] = 2.0;
@@ -1927,7 +1927,7 @@ void BasicControl::no_g_acc_callback(const std_msgs::Float32MultiArray::ConstPtr
 
     if(weak_power_state){
         if(total_u < 2.86){//min than 2.86
-            weak_power_state = (k>0.25);
+            weak_power_state = (k>0.27);
         }else{
             weak_power_state = (k>0.25);
         }
@@ -2069,10 +2069,10 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         //wait ukf init
         if (mission_step == 1)
         {
-            if (point_distance(start_pose, measure_world_pos) < 5.0)
+            if (point_distance(start_pose, measure_world_pos) < 10.0)
             {
                 mission_cnt = mission_cnt+1;
-                if (mission_cnt > 50)
+                if (mission_cnt > 50 or init_waiting <= 0)
                 {
                     mission_cnt = 0;
                     init_waiting = 0;
@@ -2117,8 +2117,40 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             return;
         }
         //take off detection
+        if(mission_step == 311){
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+                geometry_msgs::TransformStamped base2plane;
+                try
+                {
+                    base2plane = tfBuffer.lookupTransform("map", "start_by", ros::Time(0));
+                }
+                catch (tf2::TransformException& ex)
+                {
+                    ROS_WARN("Control Get TF ERROR!");
+                    return;
+                }
+                start_by_pose[0] = base2plane.transform.translation.x;
+                start_by_pose[1] = base2plane.transform.translation.y;
+                start_by_pose[2] = base2plane.transform.translation.z;
+                try
+                {
+                    base2plane = tfBuffer.lookupTransform("map", "end_by", ros::Time(0));
+                }
+                catch (tf2::TransformException& ex)
+                {
+                    ROS_WARN("Control Get TF ERROR!");
+                    return;
+                }
+                end_by_pose[0] = base2plane.transform.translation.x;
+                end_by_pose[1] = base2plane.transform.translation.y;
+                end_by_pose[2] = base2plane.transform.translation.z;
+                mission_step = 4
+            }
+            return;
+        }
         if(mission_step == 3){
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
             {
                 geometry_msgs::TransformStamped base2plane;
                 try
@@ -2171,12 +2203,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         if (mission_step == 104)
         {
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
             {
                 target_world_pos[0] = start_by_pose[0];
                 target_world_pos[1] = start_by_pose[1];
                 target_world_pos[2] = 190.0;
-
+                force_weak_power_mode = true;
                 tf_cmd[0] = target_world_pos[0];
                 tf_cmd[1] = target_world_pos[1];
                 tf_cmd[2] = target_world_pos[2];
@@ -2237,7 +2269,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     if(point_distance(measure_world_pos, target_world_pos) > 5.0){
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
-                        tf_cmd[5] = 3.0;
+                        tf_cmd[5] = 4.0;
                     }
                 }
                 
@@ -2292,6 +2324,10 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             end_id = id -1;
             mission_step = 5;
             return;
+        }
+        if (mission_step == 501){
+            mission_path_1.header.stamp = ros::Time::now();
+            mission_path_1.header.frame_id = "world";
         }
         if (mission_step == 5)
         {
@@ -2398,7 +2434,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         {
             target_world_pos[0] = end_by_pose[0];
             target_world_pos[1] = end_by_pose[1];
-            target_world_pos[2] = end_by_pose[2];
+            target_world_pos[2] = end_by_pose[2] + 1.5;
 
             tf_cmd[0] = target_world_pos[0];
             tf_cmd[1] = target_world_pos[1];
@@ -2414,8 +2450,8 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 target_world_pos[0] = end_pose[0];
                 target_world_pos[1] = end_pose[1];
-                target_world_pos[2] = end_pose[2] + 1.0;
-
+                target_world_pos[2] = end_pose[2] + 3.0;
+                force_weak_power_mode = false;
                 tf_cmd[0] = target_world_pos[0];
                 tf_cmd[1] = target_world_pos[1];
                 tf_cmd[2] = target_world_pos[2];
@@ -2453,7 +2489,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     if(point_distance(measure_world_pos, target_world_pos) > 5.0){
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
-                        tf_cmd[5] = 0.0;
+                        tf_cmd[5] = -6.0;
                     }
                 }
             }
@@ -2465,7 +2501,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
-                target_world_pos[2] = end_by_pose[2];
+                target_world_pos[2] = end_by_pose[2] + 1.5;
 
                 tf_cmd[0] = target_world_pos[0];
                 tf_cmd[1] = target_world_pos[1];
@@ -2554,7 +2590,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     if(point_distance(measure_world_pos, target_world_pos) > 5.0){
                         tf_cmd[3] = 0.0;
                         tf_cmd[4] = 0.0;
-                        tf_cmd[5] = 5.0;
+                        tf_cmd[5] = 10.0;
                         //std::cout<<"lift boost"<<std::endl;
                     }
                 }
@@ -2607,7 +2643,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             
             target_world_pos[0] = start_by_pose[0];
             target_world_pos[1] = start_by_pose[1];
-            target_world_pos[2] = start_by_pose[2];
+            target_world_pos[2] = start_by_pose[2] + 1.5;
 
             tf_cmd[0] = target_world_pos[0];
             tf_cmd[1] = target_world_pos[1];

@@ -279,19 +279,23 @@ double applyButterworthFilter(ButterworthFilter* filter, double input)
 class KalmanFilter {
 public:
     KalmanFilter() {
-        initButterworthFilter(&gps_pos_filter, 10.0, 2.5);
-        initButterworthFilter(&gps_vel_filter, 10.0, 2.0);
+        initButterworthFilter(&gps_pos_filter, 10.0, 3.0);
+        initButterworthFilter(&gps_vel_filter, 10.0, 2.5);
 
-        initButterworthFilter(&imu_pos_filter, 110.0, 35.0);
-        initButterworthFilter(&imu_vel_filter, 110.0, 25.0);
+        initButterworthFilter(&imu_pos_filter, 110.0, 15.0);
+        initButterworthFilter(&imu_vel_filter, 110.0, 12.0);
 
         x(0) = 0.0;
         x(1) = 0.0;
 
         inited = 0;
+        pre_acc = 0.0;
     }
 
     void predict(double acceleration, ros::Time imu_stamp) {
+        double temp = pre_acc;
+        pre_acc = acceleration;
+        acceleration = 0.5 * (temp + acceleration);
         if(inited < 5){
             x(1) = 0.0;
             return;
@@ -322,6 +326,7 @@ public:
 
 private:
     int inited;
+    double pre_acc;
     ros::Time last_gps_stamp;
     ros::Time last_imu_stamp;
     ButterworthFilter gps_pos_filter;
