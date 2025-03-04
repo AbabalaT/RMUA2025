@@ -2145,7 +2145,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 end_by_pose[0] = base2plane.transform.translation.x;
                 end_by_pose[1] = base2plane.transform.translation.y;
                 end_by_pose[2] = base2plane.transform.translation.z;
-                mission_step = 4
+                mission_step = 4;
             }
             return;
         }
