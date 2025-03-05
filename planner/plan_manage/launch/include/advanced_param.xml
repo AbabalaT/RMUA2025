@@ -103,8 +103,8 @@
         <param name="grid_map/p_miss" value="0.35"/>
         <param name="grid_map/p_min" value="0.12"/>
         <param name="grid_map/p_max" value="0.90"/>
-        <param name="grid_map/p_occ" value="0.4"/>
-        <param name="grid_map/fading_time" value="2.0"/>
+        <param name="grid_map/p_occ" value="0.6"/>
+        <param name="grid_map/fading_time" value="10.0"/>
         <param name="grid_map/min_ray_length" value="0.1"/>
         <param name="grid_map/max_ray_length" value="40.0"/>
         <param name="grid_map/visualization_truncate_height" value="30.0"/>
@@ -121,14 +121,14 @@
         <param name="manager/drone_id" value="$(arg drone_id)"/>
         <!-- trajectory optimization -->
         <param name="optimization/constraint_points_perPiece" value="5" type="int"/>
-        <param name="optimization/weight_obstacle" value="120" type="double"/>
-        <param name="optimization/weight_obstacle_soft" value="60" type="double"/>
+        <param name="optimization/weight_obstacle" value="2400" type="double"/>
+        <param name="optimization/weight_obstacle_soft" value="1200" type="double"/>
         <param name="optimization/weight_swarm" value="10000.0" type="double"/>
-        <param name="optimization/weight_feasibility" value="10000.0" type="double"/>
-        <param name="optimization/weight_sqrvariance" value="40000.0" type="double"/>
-        <param name="optimization/weight_time" value="60.0" type="double"/>
-        <param name="optimization/obstacle_clearance" value="0.1" type="double"/>
-        <param name="optimization/obstacle_clearance_soft" value="0.5" type="double"/>
+        <param name="optimization/weight_feasibility" value="15000.0" type="double"/>
+        <param name="optimization/weight_sqrvariance" value="10000.0" type="double"/>
+        <param name="optimization/weight_time" value="20.0" type="double"/>
+        <param name="optimization/obstacle_clearance" value="0.5" type="double"/>
+        <param name="optimization/obstacle_clearance_soft" value="1.0" type="double"/>
         <param name="optimization/swarm_clearance" value="0.15000000000000002" type="double"/> <!-- heterogeneous support: my required clearance -->
         <param name="optimization/max_vel" value="$(arg max_vel)" type="double"/>
         <param name="optimization/max_acc" value="$(arg max_acc)" type="double"/>

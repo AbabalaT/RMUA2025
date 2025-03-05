@@ -494,9 +494,9 @@ void RealPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
     // route_cloud->points.push_back(new_point);
 
-    // if(rc_channel[5] < -100){
-    //   outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
-    // }
+    if(rc_channel[5] < -100){
+      outFile << new_point.x << ", " << new_point.y << ", " << new_point.z << std::endl;
+    }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -911,17 +911,20 @@ int main(int argc, char** argv)
     mahony_quaternion[1] = 0.0;
     mahony_quaternion[2] = 0.0;
     mahony_quaternion[3] = 0.0;
+
     // pcl::io::loadPCDFile<pcl::PointXYZ>("/home/tc/route.pcd", *route_cloud);
-    //outFile.open("/home/tc/route_point.route", std::ios::app);
-    std::cout<<"init filters"<<std::endl;
+
+    outFile.open("/home/tc/route_point.route", std::ios::app);
+
     kalman_filters.push_back(KalmanFilter());
     kalman_filters.push_back(KalmanFilter());
     kalman_filters.push_back(KalmanFilter());
-    std::cout<<"init filters ok"<<std::endl;
     ros::spin();
+
     // route_cloud->width = route_cloud->points.size();
     // route_cloud->height = 1;
     // pcl::io::savePCDFileASCII("/home/tc/route.pcd", *route_cloud);
-    //outFile.close();
+
+    outFile.close();
     return 0;
 }

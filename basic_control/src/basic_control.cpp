@@ -263,28 +263,28 @@ void pid_weak(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.045f;
+    velocity_pid_mat[1][1] = 0.06f;
     velocity_pid_mat[1][2] = 0.00;
     velocity_pid_mat[1][3] = 0.01;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.045f;
+    velocity_pid_mat[2][1] = 0.06f;
     velocity_pid_mat[2][2] = 0.00f;
     velocity_pid_mat[2][3] = 0.01f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 0.3;
-    pos_pid_mat[0][2] = 0.1;
+    pos_pid_mat[0][1] = 0.4;
+    pos_pid_mat[0][2] = 0.0;
     pos_pid_mat[0][3] = 0.1;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 0.3;
-    pos_pid_mat[1][2] = 0.1;
+    pos_pid_mat[1][1] = 0.4;
+    pos_pid_mat[1][2] = 0.0;
     pos_pid_mat[1][3] = 0.1;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 0.3;
-    pos_pid_mat[2][2] = 0.1;
+    pos_pid_mat[2][1] = 0.4;
+    pos_pid_mat[2][2] = 0.0;
     pos_pid_mat[2][3] = 0.1;
 
     pos_pid_mat[3][0] = 0.0;
@@ -1406,6 +1406,24 @@ float mag_vector(float input_vec[])
     return sqrt(input_vec[0] * input_vec[0] + input_vec[1] * input_vec[1] + input_vec[2] * input_vec[2]);
 }
 
+mission_point get_point_by_B_and_u(mission_point B[], double u) {
+	if (u < 0.0) {
+		u = 0.0;
+	}
+	if (u > 1.0) {
+		u = 1.0;
+	}
+	double b03 = pow(1.0 - u, 3);
+	double b13 = 3.0 * u * pow(1.0 - u, 2);
+	double b23 = 3.0 * u * u * (1.0 - u);
+	double b33 = u * u * u;
+	mission_point result;
+	result.position[0] = b03 * B[0].position[0] + b13 * B[1].position[0] + b23 * B[2].position[0] + b33 * B[3].position[0];
+	result.position[1] = b03 * B[0].position[1] + b13 * B[1].position[1] + b23 * B[2].position[1] + b33 * B[3].position[1];
+	result.position[2] = b03 * B[0].position[2] + b13 * B[1].position[2] + b23 * B[2].position[2] + b33 * B[3].position[2];
+	return result;
+}
+
 void normalize_vec(float input_vec[], float output_vec[])
 {
     float magnitude = mag_vector(input_vec);
@@ -2061,11 +2079,431 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
     if (mission_step == 0)
     {
         rc_mode = -1;
-        mission_step = 1;
+        mission_step = 1001;
         return;
     }
     if (rc_mode ==-1)
     {
+        if (mission_step == 1001)
+        {
+            if (point_distance(start_pose, measure_world_pos) < 10.0)
+            {
+                mission_cnt = mission_cnt+1;
+                if (mission_cnt > 50 or init_waiting <= 0)
+                {
+                    mission_cnt = 0;
+                    init_waiting = 0;
+
+                    geometry_msgs::TransformStamped base2plane;
+                    try
+                    {
+                        base2plane = tfBuffer.lookupTransform("map", "start_by", ros::Time(0));
+                    }
+                    catch (tf2::TransformException& ex)
+                    {
+                        ROS_WARN("Control Get TF ERROR!");
+                        return;
+                    }
+                    start_by_pose[0] = base2plane.transform.translation.x;
+                    start_by_pose[1] = base2plane.transform.translation.y;
+                    start_by_pose[2] = base2plane.transform.translation.z;
+                    try
+                    {
+                        base2plane = tfBuffer.lookupTransform("map", "end_by", ros::Time(0));
+                    }
+                    catch (tf2::TransformException& ex)
+                    {
+                        ROS_WARN("Control Get TF ERROR!");
+                        return;
+                    }
+                    end_by_pose[0] = base2plane.transform.translation.x;
+                    end_by_pose[1] = base2plane.transform.translation.y;
+                    end_by_pose[2] = base2plane.transform.translation.z;
+
+                    target_world_pos[0] = start_by_pose[0];
+                    target_world_pos[1] = start_by_pose[1];
+                    target_world_pos[2] = start_by_pose[2] + 5.0;
+
+                    nav_msgs::Path direct_path;
+                    direct_path.header.stamp = ros::Time::now();
+                    direct_path.header.frame_id = "map";
+
+                    geometry_msgs::PoseStamped path_point;
+                    path_point.pose.position.x = start_pose[0];
+                    path_point.pose.position.y = start_pose[1];
+                    path_point.pose.position.z = start_pose[2] + 1.5;
+                    path_point.pose.orientation.w = 1.0;
+                    direct_path.poses.push_back(path_point);
+
+                    path_point.pose.position.x = start_by_pose[0];
+                    path_point.pose.position.y = start_by_pose[1];
+                    path_point.pose.position.z = start_by_pose[2];
+                    path_point.pose.orientation.w = 1.0;
+                    direct_path.poses.push_back(path_point);
+
+                    path_point.pose.position.x = target_world_pos[0];
+                    path_point.pose.position.y = target_world_pos[1];
+                    path_point.pose.position.z = target_world_pos[2];
+                    path_point.pose.orientation.w = 1.0;
+                    direct_path.poses.push_back(path_point);
+
+                    exe_path_publisher.publish(direct_path);
+                    mission_step = 1002;
+                }
+            }
+            return;
+        }
+        if (mission_step == 1002)
+        {
+            static int take_off_cnt = 0;
+            if (!isnan(tf_cmd[5]))
+            {
+                take_off_cnt = take_off_cnt + 1;
+                if (take_off_cnt > 5)
+                {
+                    std_msgs::Bool enable_flag;
+                    enable_flag.data =  true;
+                    pcl_enbale_publisher.publish(enable_flag);
+                }
+            }
+            if (point_distance(target_world_pos, measure_world_pos) < 0.5)
+            {
+                std::cout<<"start pose "<<start_pose[0]<<", "<<start_pose[1]<<", "<<start_pose[2]<<std::endl;
+                std::cout<<"end pose "<<end_pose[0]<<", "<<end_pose[1]<<", "<<end_pose[2]<<std::endl;
+                float min_distance = 5000.0;
+                int i = 0;
+                int id = 0;
+
+                for (auto path = mission_path_list.begin(); path != mission_path_list.end(); ++path)
+                {
+                    i = i + 1;
+                    float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
+                    std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
+                    std::cout<<"path"<<i<<" pose "<< path_begin_point[0]<<", "<< path_begin_point[1]<<", "<< path_begin_point[2] <<std::endl;
+                    float current_distance = point_distance(start_pose, path_begin_point);
+                    std::cout<<"current distance: "<< current_distance << std::endl;
+
+                    if (current_distance < min_distance)
+                    {
+                        exe_path1 = path;
+                        min_distance = current_distance;
+                        id = i;
+                    }
+                    std::cout<<"min distance"<<min_distance<<std::endl;
+
+                }
+                std::cout<<"go path id: "<<id<<std::endl;
+                start_id = id -1;
+                min_distance = 99999.0;
+                i = 0;
+                for (auto path = mission_path_list.begin(); path != mission_path_list.end(); path++)
+                {
+                    i = i + 1;
+                    std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
+                    float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
+                    float current_distance = point_distance(end_pose, path_begin_point);
+                    if (current_distance < min_distance)
+                    {
+                        exe_path2 = path;
+                        min_distance = current_distance;
+                        id = i;
+                    }
+                }
+                std::cout<<"back path id: "<<id<<std::endl;
+                end_id = id -1;
+
+                mission_path_1.header.stamp = ros::Time::now();
+                mission_path_1.header.frame_id = "map";
+
+                for (auto point = exe_path1->begin(); point != exe_path1->end(); ++point)
+                {
+                    geometry_msgs::PoseStamped path_point;
+                    path_point.pose.position.x = point->position[0];
+                    path_point.pose.position.y = point->position[1];
+                    path_point.pose.position.z = point->position[2];
+                    path_point.pose.orientation.w = 1.0;
+                    mission_path_1.poses.push_back(path_point);
+                }
+
+                mission_point middle_start = *(exe_path1->end() - 1);
+                mission_point before_start = *(exe_path1->end() - 15);
+                mission_point after_start;
+
+                after_start.position[0] = middle_start.position[0] + middle_start.position[0] - before_start.position[0];
+                after_start.position[1] = middle_start.position[1] + middle_start.position[1] - before_start.position[1];
+                after_start.position[2] = middle_start.position[2] + middle_start.position[2] - before_start.position[2];
+
+                mission_point middle_end = *(exe_path2->end() - 1);
+                mission_point before_end = *(exe_path2->end() - 15);
+                mission_point after_end;
+
+                after_end.position[0] = middle_end.position[0] + middle_end.position[0] - before_end.position[0];
+                after_end.position[1] = middle_end.position[1] + middle_end.position[1] - before_end.position[1];
+                after_end.position[2] = middle_end.position[2] + middle_end.position[2] - before_end.position[2];
+
+                mission_point B1[4] = {middle_start, after_start, after_end, middle_end};//get control point
+
+                auto test_point = get_point_by_B_and_u(B1, 0.5);//get 0.01 point;
+                double test_distance = point_distance(middle_start.position, test_point.position);
+                double delta = 0.5 * 5.0 / test_distance;
+
+                for (double itt = delta; itt < 1.0; itt += delta)
+                {
+                    geometry_msgs::PoseStamped path_point;
+                    auto route_point = get_point_by_B_and_u(B1, itt);
+                    path_point.pose.position.x = route_point.position[0];
+                    path_point.pose.position.y = route_point.position[1];
+                    path_point.pose.position.z = route_point.position[2];
+                    path_point.pose.orientation.w = 1.0;
+                    mission_path_1.poses.push_back(path_point);
+                }
+
+                for (auto point = exe_path2->rbegin(); point != exe_path2->rend(); ++point)
+                {
+                    geometry_msgs::PoseStamped path_point;
+                    path_point.pose.position.x = point->position[0];
+                    path_point.pose.position.y = point->position[1];
+                    path_point.pose.position.z = point->position[2];
+                    path_point.pose.orientation.w = 1.0;
+                    mission_path_1.poses.push_back(path_point);
+                }
+
+
+                geometry_msgs::PoseStamped path_point;
+                path_point.pose.position.x = end_by_pose[0];
+                path_point.pose.position.y = end_by_pose[1];
+                path_point.pose.position.z = end_by_pose[2] + 5.0;
+                path_point.pose.orientation.w = 1.0;
+                mission_path_1.poses.push_back(path_point);
+
+                target_world_pos[0] = end_by_pose[0];
+                target_world_pos[1] = end_by_pose[1];
+                target_world_pos[2] = end_by_pose[2] + 5.0;
+
+                exe_path_publisher.publish(mission_path_1);
+                mission_step = 1003;
+            }
+            return;
+        }
+        if (mission_step == 1003)
+        {
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+                target_world_pos[0] = end_pose[0];
+                target_world_pos[1] = end_pose[1];
+                target_world_pos[2] = end_pose[2] + 1.5;
+
+                nav_msgs::Path direct_path;
+                direct_path.header.stamp = ros::Time::now();
+                direct_path.header.frame_id = "map";
+
+                geometry_msgs::PoseStamped path_point;
+
+                path_point.pose.position.x = end_by_pose[0];
+                path_point.pose.position.y = end_by_pose[1];
+                path_point.pose.position.z = end_by_pose[2];
+                path_point.pose.orientation.w = 1.0;
+                direct_path.poses.push_back(path_point);
+
+                path_point.pose.position.x = target_world_pos[0];
+                path_point.pose.position.y = target_world_pos[1];
+                path_point.pose.position.z = target_world_pos[2];
+                path_point.pose.orientation.w = 1.0;
+                direct_path.poses.push_back(path_point);
+                exe_path_publisher.publish(direct_path);
+                mission_step = 1004;
+            }
+            return;
+        }
+        if (mission_step == 1004)
+        {
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+
+                target_world_pos[0] = end_by_pose[0];
+                target_world_pos[1] = end_by_pose[1];
+                target_world_pos[2] = end_by_pose[2] + 5.0;
+
+                nav_msgs::Path direct_path;
+                direct_path.header.stamp = ros::Time::now();
+                direct_path.header.frame_id = "map";
+
+                geometry_msgs::PoseStamped path_point;
+
+                path_point.pose.position.x = end_pose[0];
+                path_point.pose.position.y = end_pose[1];
+                path_point.pose.position.z = end_pose[2] + 1.5;
+                path_point.pose.orientation.w = 1.0;
+                direct_path.poses.push_back(path_point);
+
+                path_point.pose.position.x = end_by_pose[0];
+                path_point.pose.position.y = end_by_pose[1];
+                path_point.pose.position.z = end_by_pose[2];
+                path_point.pose.orientation.w = 1.0;
+                direct_path.poses.push_back(path_point);
+
+                path_point.pose.position.x = target_world_pos[0];
+                path_point.pose.position.y = target_world_pos[1];
+                path_point.pose.position.z = target_world_pos[2];
+                path_point.pose.orientation.w = 1.0;
+                direct_path.poses.push_back(path_point);
+                exe_path_publisher.publish(direct_path);
+                mission_step = 1005;
+            }
+            return;
+        }
+        if (mission_step == 1005)
+        {
+            force_strong_power_mode = true;
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+                target_world_pos[0] = end_by_pose[0];
+                target_world_pos[1] = end_by_pose[1];
+                target_world_pos[2] = 190.0;
+                tf_cmd[0] = target_world_pos[0];
+                tf_cmd[1] = target_world_pos[1];
+                tf_cmd[2] = target_world_pos[2];
+                tf_cmd[3] = 0.0;
+                tf_cmd[4] = 0.0;
+                tf_cmd[5] = 10.0;
+                mission_step = 1006;
+            }
+            return;
+        }
+        if (mission_step == 1006)
+        {
+            static bool eg_rebooted = false;
+            if (!eg_rebooted)
+            {
+                if (measure_world_pos[2] > end_by_pose[2] + 30.0)
+                {
+                    eg_rebooted = true;
+                    ros::NodeHandle pnh;
+                    std_msgs::Float32 limit_msg;
+                    pnh.setParam("/drone_0_ego_planner_node/manager/max_acc", 5.0);
+                    pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 30.0);
+                    pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 5.0);
+                    pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 30.0);
+                    limit_msg.data = 35.0;
+                    planner_vel_limit_publisher.publish(limit_msg);
+                }
+            }
+
+            tf_cmd[0] = target_world_pos[0];
+            tf_cmd[1] = target_world_pos[1];
+            tf_cmd[2] = target_world_pos[2];
+            tf_cmd[3] = 0.0;
+            tf_cmd[4] = 0.0;
+            tf_cmd[5] = 10.0;
+
+            if (measure_world_pos[2] > 180.0)
+            {
+                tf_cmd[5] = 0.0;
+            }
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+                mission_point back_end = *(exe_path1->end() - 1);
+                mission_point after_end = *(exe_path1->end() - 60);
+                mission_point berfore_end;
+
+                berfore_end.position[0] = back_end.position[0] + back_end.position[0] - after_end.position[0];
+                berfore_end.position[1] = back_end.position[1] + back_end.position[1] - after_end.position[1];
+                berfore_end.position[2] = back_end.position[2] + back_end.position[2] - after_end.position[2];
+
+                mission_point back_start;
+                mission_point after_start;
+
+                back_start.position[0] = end_by_pose[0];
+                back_start.position[1] = end_by_pose[1];
+                back_start.position[2] = 190.0;
+
+                after_start.position[0] = back_end.position[0] - back_start.position[0];
+                after_start.position[1] = back_end.position[1] - back_start.position[1];
+                after_start.position[2] = back_end.position[2] - back_start.position[2];
+
+                double length = sqrt(after_start.position[0] * after_start.position[0]
+                    +after_start.position[1]*after_start.position[1] +
+                        after_start.position[2]*after_start.position[2]);
+
+                after_start.position[0] = after_start.position[0] / length * 30.0 +back_start.position[0];
+                after_start.position[1] = after_start.position[1] / length * 30.0 +back_start.position[1];
+                after_start.position[2] = after_start.position[2] / length * 30.0 +back_start.position[2];
+
+                mission_point B1[4] = {back_start, after_start, berfore_end, back_end};//get control point
+
+                auto test_point = get_point_by_B_and_u(B1, 0.5);//get 0.01 point;
+                double test_distance = point_distance(back_start.position, test_point.position);
+                double delta = 0.5 * 5.0 / test_distance;
+
+                for (double itt = 0.0; itt < 1.0; itt += delta)
+                {
+                    geometry_msgs::PoseStamped path_point;
+                    auto route_point = get_point_by_B_and_u(B1, itt);
+                    path_point.pose.position.x = route_point.position[0];
+                    path_point.pose.position.y = route_point.position[1];
+                    path_point.pose.position.z = route_point.position[2];
+                    path_point.pose.orientation.w = 1.0;
+                    mission_path_2.poses.push_back(path_point);
+                }
+
+                for (auto point = exe_path1->rbegin(); point != exe_path1->rend(); ++point)
+                {
+                    geometry_msgs::PoseStamped path_point;
+                    path_point.pose.position.x = point->position[0];
+                    path_point.pose.position.y = point->position[1];
+                    path_point.pose.position.z = point->position[2];
+                    path_point.pose.orientation.w = 1.0;
+                    mission_path_2.poses.push_back(path_point);
+                }
+
+
+                geometry_msgs::PoseStamped path_point;
+                path_point.pose.position.x = start_by_pose[0];
+                path_point.pose.position.y = start_by_pose[1];
+                path_point.pose.position.z = start_by_pose[2] + 5.0;
+                path_point.pose.orientation.w = 1.0;
+                mission_path_2.poses.push_back(path_point);
+
+                target_world_pos[0] = start_by_pose[0];
+                target_world_pos[1] = start_by_pose[1];
+                target_world_pos[2] = start_by_pose[2] + 5.0;
+                mission_path_2.header.frame_id = "map";
+                exe_path_publisher.publish(mission_path_2);
+
+                mission_step = 1007;
+            }
+            return;
+        }
+        if (mission_step == 1007)
+        {
+            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            {
+                target_world_pos[0] = start_pose[0];
+                target_world_pos[1] = start_pose[1];
+                target_world_pos[2] = start_pose[2] + 1.5;
+
+                nav_msgs::Path direct_path;
+                direct_path.header.stamp = ros::Time::now();
+                direct_path.header.frame_id = "map";
+
+                geometry_msgs::PoseStamped path_point;
+
+                path_point.pose.position.x = start_by_pose[0];
+                path_point.pose.position.y = start_by_pose[1];
+                path_point.pose.position.z = start_by_pose[2];
+                path_point.pose.orientation.w = 1.0;
+                direct_path.poses.push_back(path_point);
+
+                path_point.pose.position.x = target_world_pos[0];
+                path_point.pose.position.y = target_world_pos[1];
+                path_point.pose.position.z = target_world_pos[2];
+                path_point.pose.orientation.w = 1.0;
+                direct_path.poses.push_back(path_point);
+                exe_path_publisher.publish(direct_path);
+                mission_step = 1008;
+            }
+            return;
+        }
         //wait ukf init
         if (mission_step == 1)
         {
@@ -2076,7 +2514,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 {
                     mission_cnt = 0;
                     init_waiting = 0;
-                    mission_step = 2;
+                    mission_step = 1002;
                 }
             }
             return;
@@ -2237,7 +2675,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 nav_msgs::Path direct_path;
                 direct_path.header.stamp = ros::Time::now();
-                direct_path.header.frame_id = "world";
+                direct_path.header.frame_id = "map";
 
                 float d_pt = 5.0 / point_distance(target_world_pos, measure_world_pos);
                 // std::cout<<"d_pt:"<<d_pt << std::endl;
@@ -2261,7 +2699,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 
 
-                mission_step = 6001;
+                mission_step = 601;
                 
                 tf_cmd[5] = NAN;
             }else{
@@ -2331,14 +2769,14 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         if (mission_step == 501){
             mission_path_1.header.stamp = ros::Time::now();
-            mission_path_1.header.frame_id = "world";
+            mission_path_1.header.frame_id = "map";
         }
         if (mission_step == 5)
         {
             mission_path_1.header.stamp = ros::Time::now();
-            mission_path_1.header.frame_id = "world";
+            mission_path_1.header.frame_id = "map";
             mission_path_2.header.stamp = ros::Time::now();
-            mission_path_2.header.frame_id = "world";
+            mission_path_2.header.frame_id = "map";
             for (auto point = exe_path1->begin(); point != exe_path1->end(); ++point)
             {
                 geometry_msgs::PoseStamped path_point;
@@ -2401,12 +2839,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 target_world_pos[0] = mission_path_2.poses.back().pose.position.x;
                 target_world_pos[1] = mission_path_2.poses.back().pose.position.y + 750.0;
                 target_world_pos[2] = mission_path_2.poses.back().pose.position.z;
-                mission_step = 6001;
+                mission_step = 601;
             }
             return;
         }
 
-        if(mission_step == 6001){
+        if(mission_step == 601){
             if (point_distance(target_world_pos, measure_world_pos) < 3.0)
             {
                 target_world_pos[0] = end_by_pose[0];
@@ -2427,14 +2865,14 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 tf_cmd[9] = measure_world_pos[3];
 
                 tf_cmd[10] = NAN;
-                mission_step = 6002;
+                mission_step = 602;
 
                 
                 offboard_disable = true;
             }
             return;
         }
-        if (mission_step == 6002)
+        if (mission_step == 602)
         {
             target_world_pos[0] = end_by_pose[0];
             target_world_pos[1] = end_by_pose[1];
@@ -2471,7 +2909,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
-                mission_step = 6003;
+                mission_step = 603;
 
                 
                 force_weak_power_mode = false;
@@ -2503,7 +2941,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             }
             return;
         }
-        if (mission_step == 6003)
+        if (mission_step == 603)
         {
             if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
@@ -2526,12 +2964,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
-                mission_step = 6004;
+                mission_step = 604;
                 force_strong_power_mode = true;
             }
             return;
         }
-        if (mission_step == 6004)
+        if (mission_step == 604)
         {
             if (point_distance(target_world_pos, measure_world_pos) < 2.5)
             {
@@ -2568,7 +3006,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 nav_msgs::Path direct_path;
                 direct_path.header.stamp = ros::Time::now();
-                direct_path.header.frame_id = "world";
+                direct_path.header.frame_id = "map";
                 float d_pt = 5.0 / point_distance(target_world_pos, measure_world_pos);
                 for(float i = 0.00; i <= 1.00; i = i + d_pt){
                     geometry_msgs::PoseStamped path_point;
@@ -2587,7 +3025,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 direct_path.poses.push_back(path_point);
                 exe_path_publisher.publish(direct_path);
 
-                mission_step = 8001;
+                mission_step = 801;
                 tf_cmd[5] = NAN;
 
             }else{
@@ -2613,12 +3051,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                 target_world_pos[0] = mission_path_4.poses.back().pose.position.x;
                 target_world_pos[1] = mission_path_4.poses.back().pose.position.y + 750.0;
                 target_world_pos[2] = mission_path_4.poses.back().pose.position.z;
-                mission_step = 8001;
+                mission_step = 801;
                 force_strong_power_mode = true;
             }
             return;
         }
-        if(mission_step == 8001){
+        if(mission_step == 801){
             if (point_distance(target_world_pos, measure_world_pos) < 5.0)
             {
 
@@ -2641,12 +3079,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
-                mission_step = 8002;
+                mission_step = 802;
                 offboard_disable = true;
             }
             return;
         }
-        if (mission_step == 8002)
+        if (mission_step == 802)
         {
             
             target_world_pos[0] = start_by_pose[0];
@@ -2678,7 +3116,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 tf_cmd[10] = NAN;
                 tf_cmd[10] = NAN;
-                mission_step = 8003;
+                mission_step = 803;
                 offboard_disable = false;
             }else{
                 if (point_distance(measure_world_pos, start_by_pose) > 5.0){

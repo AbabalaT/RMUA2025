@@ -675,7 +675,7 @@ namespace ego_planner
     std::vector<Eigen::Vector3d> path_points_;
     for (const auto& pose : msg->poses) {
       Eigen::Vector3d point(pose.pose.position.x,
-                            pose.pose.position.y,
+                            pose.pose.position.y - 750.0,
                             pose.pose.position.z);
       path_points_.push_back(point);
       // std::cout<<"waypoint Z:"<<pose.pose.position.z<<std::endl;
