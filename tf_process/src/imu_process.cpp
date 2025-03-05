@@ -117,9 +117,9 @@ void get_orientation_by_pos(float& pose_x, float& pose_y, float& pose_z,
         return;
     }
 
-    possible_pose[0] = 0.0;
-    possible_pose[1] = 0.0;
-    possible_pose[2] = 0.0;
+    possible_pose[0] = -102.9;
+    possible_pose[1] = 1353.04;
+    possible_pose[2] = 7.42;
     if(point_distance(require_pose, possible_pose) < 25.0){        
         quat_x = 0.0;
         quat_y = 0.0;

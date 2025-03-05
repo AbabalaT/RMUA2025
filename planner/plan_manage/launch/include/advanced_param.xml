@@ -104,7 +104,7 @@
         <param name="grid_map/p_min" value="0.12"/>
         <param name="grid_map/p_max" value="0.90"/>
         <param name="grid_map/p_occ" value="0.6"/>
-        <param name="grid_map/fading_time" value="10.0"/>
+        <param name="grid_map/fading_time" value="2.0"/>
         <param name="grid_map/min_ray_length" value="0.1"/>
         <param name="grid_map/max_ray_length" value="40.0"/>
         <param name="grid_map/visualization_truncate_height" value="30.0"/>
@@ -122,7 +122,7 @@
         <!-- trajectory optimization -->
         <param name="optimization/constraint_points_perPiece" value="5" type="int"/>
         <param name="optimization/weight_obstacle" value="10000" type="double"/>
-        <param name="optimization/weight_obstacle_soft" value="50000" type="double"/>
+        <param name="optimization/weight_obstacle_soft" value="5000" type="double"/>
         <param name="optimization/weight_swarm" value="10000.0" type="double"/>
         <param name="optimization/weight_feasibility" value="10000.0" type="double"/>
         <param name="optimization/weight_sqrvariance" value="10000.0" type="double"/>
