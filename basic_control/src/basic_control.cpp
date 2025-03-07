@@ -203,27 +203,27 @@ void pid_init(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.02f;
+    velocity_pid_mat[1][1] = 0.04f;
     velocity_pid_mat[1][2] = 0.0;
     velocity_pid_mat[1][3] = 0.0001;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.02f;
+    velocity_pid_mat[2][1] = 0.04f;
     velocity_pid_mat[2][2] = 0.0f;
     velocity_pid_mat[2][3] = 0.0001f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 0.4;
+    pos_pid_mat[0][1] = 0.6;
     pos_pid_mat[0][2] = 0.0;
     pos_pid_mat[0][3] = 0.1;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 0.4;
+    pos_pid_mat[1][1] = 0.6;
     pos_pid_mat[1][2] = 0.0;
     pos_pid_mat[1][3] = 0.1;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 0.4;
+    pos_pid_mat[2][1] = 0.6;
     pos_pid_mat[2][2] = 0.0;
     pos_pid_mat[2][3] = 0.1;
 
@@ -263,29 +263,29 @@ void pid_weak(void)
     angle_pid_mat[2][2] = 0.0f;
 
     velocity_pid_mat[1][0] = 0.0;
-    velocity_pid_mat[1][1] = 0.06f;
+    velocity_pid_mat[1][1] = 0.12f;
     velocity_pid_mat[1][2] = 0.00;
-    velocity_pid_mat[1][3] = 0.01;
+    velocity_pid_mat[1][3] = 0.001;
 
     velocity_pid_mat[2][0] = 0.0;
-    velocity_pid_mat[2][1] = 0.06f;
+    velocity_pid_mat[2][1] = 0.12f;
     velocity_pid_mat[2][2] = 0.00f;
-    velocity_pid_mat[2][3] = 0.01f;
+    velocity_pid_mat[2][3] = 0.001f;
 
     pos_pid_mat[0][0] = 0.0;
-    pos_pid_mat[0][1] = 0.4;
+    pos_pid_mat[0][1] = 0.6;
     pos_pid_mat[0][2] = 0.0;
-    pos_pid_mat[0][3] = 0.1;
+    pos_pid_mat[0][3] = 0.01;
 
     pos_pid_mat[1][0] = 0.0;
-    pos_pid_mat[1][1] = 0.4;
+    pos_pid_mat[1][1] = 0.6;
     pos_pid_mat[1][2] = 0.0;
-    pos_pid_mat[1][3] = 0.1;
+    pos_pid_mat[1][3] = 0.01;
 
     pos_pid_mat[2][0] = 0.0;
-    pos_pid_mat[2][1] = 0.4;
+    pos_pid_mat[2][1] = 0.6;
     pos_pid_mat[2][2] = 0.0;
-    pos_pid_mat[2][3] = 0.1;
+    pos_pid_mat[2][3] = 0.01;
 
     pos_pid_mat[3][0] = 0.0;
     pos_pid_mat[3][1] = 2.0;
@@ -1351,6 +1351,8 @@ BasicControl::BasicControl(ros::NodeHandle* nh)
     planner_acc_limit_publisher = nh->advertise<std_msgs::Float32>("/exe/acc_limit", 10);
     planner_vel_limit_publisher = nh->advertise<std_msgs::Float32>("/exe/vel_limit", 10);
 
+    world_force_marker_publisher = nh->advertise<visualization_msgs::Marker>("/exe/force_marker", 10);
+
     initButterworthFilter(&world_vel_x_filter, 100.0, 1.25);
     initButterworthFilter(&world_vel_y_filter, 100.0, 1.25);
     initButterworthFilter(&world_vel_z_filter, 100.0, 1.25);
@@ -1477,7 +1479,7 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
         target_vel_body[0] = rc_channel[1] / 40.0f;
         target_w_yaw = rc_channel[3] * -0.002341f;
         target_vel_body[2] = rc_channel[2] / 80.0f;
-        if (target_vel_body[2] < 0.1 and target_vel_body[2] > -0.1)
+        if (target_vel_body[2] < 0.2 and target_vel_body[2] > -0.2)
         {
             target_vel_body[2] = 0.0;
         }
@@ -1554,7 +1556,6 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
                     world_target_vel[0] += tf_cmd[3];
                     world_target_vel[1] += tf_cmd[4];
                     world_target_vel[2] += tf_cmd[5];
-                    //std::cout<<"vel ff enabled"<<std::endl;
                 }
             }
         }
@@ -1563,6 +1564,8 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     world_force[0] = pid_vx(world_target_vel[0], world_measure_vel[0], dt);
     world_force[1] = pid_vy(world_target_vel[1], world_measure_vel[1], dt);
     world_force[2] = pid_vz(world_target_vel[2], world_measure_vel[2], dt);
+
+
 
     std_msgs::Float32 rate_msg;
 
@@ -1588,19 +1591,37 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
                 if (!isnan(tf_cmd[8]))
                 {
                     if(weak_power_state){
-                        world_force[0] += tf_cmd[6] * 0.45 / 30.03; //12:all max thrust
-                        world_force[1] += tf_cmd[7] * 0.45 / 30.03;
-                        world_force[2] += tf_cmd[8] * 0.45 / 30.03;
+                        world_force[0] += tf_cmd[6] * 0.8 / 12.335; //12:all max thrust
+                        world_force[1] += tf_cmd[7] * 0.8 / 12.335; //0.8:mass 12.335:waek mode max force
+                        world_force[2] += tf_cmd[8] * 0.8 / 12.335; //output throttle 0.0->1.0
                     }
                     else{
-                        world_force[0] += tf_cmd[6] * 0.45 / 49.03; //12:all max thrust
-                        world_force[1] += tf_cmd[7] * 0.45 / 49.03;
-                        world_force[2] += tf_cmd[8] * 0.45 / 49.03;
+                        world_force[0] += tf_cmd[6] * 0.8 / 49.0; //49:all max thrust, strong power mode
+                        world_force[1] += tf_cmd[7] * 0.8 / 49.0;
+                        world_force[2] += tf_cmd[8] * 0.8 / 49.0;
                     }                    
                 }
             }
         }
     }
+
+    float body_anti_drag_force[3];
+    float world_anti_drag_force[3];
+    if(weak_power_state){
+        body_anti_drag_force[0] = 7.2e-3 * body_measure_vel[0] * body_measure_vel[0] / 12.335;
+        body_anti_drag_force[1] = 7.2e-3 * body_measure_vel[1] * body_measure_vel[1] / 12.335;
+        body_anti_drag_force[2] = 0.109 * body_measure_vel[2] * body_measure_vel[2] / 12.335;
+    }
+    else{
+        body_anti_drag_force[0] = 7.2e-3 * body_measure_vel[0] * body_measure_vel[0] / 49.0;
+        body_anti_drag_force[1] = 7.2e-3 * body_measure_vel[1] * body_measure_vel[1] / 49.0;
+        body_anti_drag_force[2] = 0.109 * body_measure_vel[2] * body_measure_vel[2] / 49.0;
+    }
+    World_to_Body(body_anti_drag_force, world_anti_drag_force, body_to_world);
+
+    world_force[0] += world_anti_drag_force[0];
+    world_force[1] += world_anti_drag_force[1];
+    world_force[2] += world_anti_drag_force[2];
 
     if (rc_mode == -1)
     {
@@ -1628,9 +1649,9 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     {
         world_force[2] = 0.01f;
     }
-    if (world_force[2] > 1.0f)
+    if (world_force[2] > 0.99f)
     {
-        world_force[2] = 1.0f;
+        world_force[2] = 0.99f;
     }
 
     if (world_force[0] * world_force[0] + world_force[1] * world_force[1] > 1.0 - world_force[2] * world_force[2])
@@ -1640,6 +1661,35 @@ void BasicControl::poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
         world_force[0] *= factor;
         world_force[1] *= factor;
     }
+
+    visualization_msgs::Marker world_force_marker;
+    world_force_marker.header.stamp = ros::Time::now();
+    world_force_marker.header.frame_id = "base_link_identity";
+    world_force_marker.id = 0;
+    world_force_marker.ns = "vector";
+    world_force_marker.type = visualization_msgs::Marker::ARROW;
+    world_force_marker.action = visualization_msgs::Marker::ADD;
+    geometry_msgs::Point start_point, end_point;
+    start_point.x = 0.0;
+    start_point.y = 0.0;
+    start_point.z = 0.0;
+
+    end_point.x = 3.0 * world_force[0];
+    end_point.y = 3.0 * world_force[1];
+    end_point.z = 3.0 * world_force[2];
+
+    world_force_marker.points.push_back(start_point);
+    world_force_marker.points.push_back(end_point);
+
+    world_force_marker.color.r = 1.0;
+    world_force_marker.color.g = 0.0;
+    world_force_marker.color.b = 0.0;
+    world_force_marker.color.a = 1.0;
+    world_force_marker.scale.x = 0.1;
+    world_force_marker.scale.y = 0.1;
+    world_force_marker.scale.z = 2.0;
+
+    world_force_marker_publisher.publish(world_force_marker);
 
     World_to_Body(world_force, body_force, yaw_quaternion);
     throttle_set = sqrt(body_force[0] * body_force[0] + body_force[1] * body_force[1] + body_force[2] * body_force[2]);
@@ -2056,9 +2106,9 @@ void BasicControl::start_pose_callback(const geometry_msgs::PoseStamped::ConstPt
 
 void BasicControl::end_pose_callback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-    end_pose[0] = msg->pose.position.y;
-    end_pose[1] = msg->pose.position.x;
-    end_pose[2] = - msg->pose.position.z;
+    // end_pose[0] = msg->pose.position.y;
+    // end_pose[1] = msg->pose.position.x;
+    // end_pose[2] = - msg->pose.position.z;
 }
 
 int mission_cnt = 0;
@@ -2119,6 +2169,18 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     end_by_pose[0] = base2plane.transform.translation.x;
                     end_by_pose[1] = base2plane.transform.translation.y;
                     end_by_pose[2] = base2plane.transform.translation.z;
+                    try
+                    {
+                        base2plane = tfBuffer.lookupTransform("map", "real_end", ros::Time(0));
+                    }
+                    catch (tf2::TransformException& ex)
+                    {
+                        ROS_WARN("Control Get TF ERROR!");
+                        return;
+                    }
+                    end_pose[0] = base2plane.transform.translation.x;
+                    end_pose[1] = base2plane.transform.translation.y;
+                    end_pose[2] = base2plane.transform.translation.z;
 
                     target_world_pos[0] = start_by_pose[0];
                     target_world_pos[1] = start_by_pose[1];
@@ -2160,7 +2222,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     pcl_enbale_publisher.publish(enable_flag);
                 }
             }
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 3.0)
             {
                 target_world_pos[0] = start_by_pose[0];
                 target_world_pos[1] = start_by_pose[1];
@@ -2191,7 +2253,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         if (mission_step == 1002)
         {
 
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 std::cout<<"start pose "<<start_pose[0]<<", "<<start_pose[1]<<", "<<start_pose[2]<<std::endl;
                 std::cout<<"end pose "<<end_pose[0]<<", "<<end_pose[1]<<", "<<end_pose[2]<<std::endl;
@@ -2312,7 +2374,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         if (mission_step == 10031)
         {
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
@@ -2342,7 +2404,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         }
         if (mission_step == 1003)
         {
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
             {
                 target_world_pos[0] = end_pose[0];
                 target_world_pos[1] = end_pose[1];
@@ -2409,7 +2471,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
         if (mission_step == 1005)
         {
             force_strong_power_mode = true;
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
+            if (point_distance(target_world_pos, measure_world_pos) < 3.0)
             {
                 target_world_pos[0] = end_by_pose[0];
                 target_world_pos[1] = end_by_pose[1];
@@ -2434,11 +2496,12 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     eg_rebooted = true;
                     ros::NodeHandle pnh;
                     std_msgs::Float32 limit_msg;
-                    pnh.setParam("/drone_0_ego_planner_node/manager/max_acc", 5.0);
+                    pnh.setParam("/drone_0_ego_planner_node/manager/max_acc", 8.0);
                     pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 30.0);
-                    pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 5.0);
+                    pnh.setParam("/drone_0_ego_planner_node/manager/polyTraj_piece_length", 8.0);
+                    pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 8.0);
                     pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 30.0);
-                    limit_msg.data = 35.0;
+                    limit_msg.data = 45.0;
                     planner_vel_limit_publisher.publish(limit_msg);
                 }
             }
@@ -2448,7 +2511,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             tf_cmd[2] = target_world_pos[2];
             tf_cmd[3] = 0.0;
             tf_cmd[4] = 0.0;
-            tf_cmd[5] = 10.0;
+            tf_cmd[5] = 0.0;
 
             if (measure_world_pos[2] > 180.0)
             {
@@ -2487,7 +2550,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
 
                 auto test_point = get_point_by_B_and_u(B1, 0.5);//get 0.01 point;
                 double test_distance = point_distance(back_start.position, test_point.position);
-                double delta = 0.5 * 5.0 / test_distance;
+                double delta = 0.5 * 10.0 / test_distance;
 
                 for (double itt = 0.0; itt < 1.0; itt += delta)
                 {
@@ -2588,634 +2651,6 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
             }
             return;
         }
-        //wait ukf init
-        if (mission_step == 1)
-        {
-            if (point_distance(start_pose, measure_world_pos) < 10.0)
-            {
-                mission_cnt = mission_cnt+1;
-                if (mission_cnt > 50 or init_waiting <= 0)
-                {
-                    mission_cnt = 0;
-                    init_waiting = 0;
-                    mission_step = 1002;
-                }
-            }
-            return;
-        }
-        //start point cloud publish and take off
-        if (mission_step == 2)
-        {
-            std_msgs::Bool enable_flag;
-            enable_flag.data =  true;
-            pcl_enbale_publisher.publish(enable_flag);
-            target_world_pos[0] = start_pose[0];
-            target_world_pos[1] = start_pose[1];
-            target_world_pos[2] = start_pose[2] + 1.5;
 
-            tf_cmd[0] = target_world_pos[0];
-            tf_cmd[1] = target_world_pos[1];
-            tf_cmd[2] = target_world_pos[2];
-
-            tf_cmd[3] = NAN;
-            tf_cmd[4] = NAN;
-            tf_cmd[5] = NAN;
-            tf_cmd[6] = NAN;
-            tf_cmd[7] = NAN;
-            tf_cmd[8] = NAN;
-
-            tf_cmd[9] = measure_world_pos[3];
-            tf_cmd[10] = NAN;
-            tf_cmd[10] = NAN;
-
-            // ros::NodeHandle pnh;
-            // pnh->setParam("/custom_debug/rc_mode", -1);
-
-            // std_msgs::Float32 limit_msg;
-            // limit_msg.data = 15.0;
-            // planner_vel_limit_publisher.publish(limit_msg);
-
-            mission_step = 3;//TODO if not test ps
-            return;
-        }
-        //take off detection
-        if(mission_step == 311){
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
-            {
-                geometry_msgs::TransformStamped base2plane;
-                try
-                {
-                    base2plane = tfBuffer.lookupTransform("map", "start_by", ros::Time(0));
-                }
-                catch (tf2::TransformException& ex)
-                {
-                    ROS_WARN("Control Get TF ERROR!");
-                    return;
-                }
-                start_by_pose[0] = base2plane.transform.translation.x;
-                start_by_pose[1] = base2plane.transform.translation.y;
-                start_by_pose[2] = base2plane.transform.translation.z;
-                try
-                {
-                    base2plane = tfBuffer.lookupTransform("map", "end_by", ros::Time(0));
-                }
-                catch (tf2::TransformException& ex)
-                {
-                    ROS_WARN("Control Get TF ERROR!");
-                    return;
-                }
-                end_by_pose[0] = base2plane.transform.translation.x;
-                end_by_pose[1] = base2plane.transform.translation.y;
-                end_by_pose[2] = base2plane.transform.translation.z;
-                mission_step = 4;
-            }
-            return;
-        }
-        if(mission_step == 3){
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
-            {
-                geometry_msgs::TransformStamped base2plane;
-                try
-                {
-                    base2plane = tfBuffer.lookupTransform("map", "start_by", ros::Time(0));
-                }
-                catch (tf2::TransformException& ex)
-                {
-                    ROS_WARN("Control Get TF ERROR!");
-                    return;
-                }
-                start_by_pose[0] = base2plane.transform.translation.x;
-                start_by_pose[1] = base2plane.transform.translation.y;
-                start_by_pose[2] = base2plane.transform.translation.z;
-                try
-                {
-                    base2plane = tfBuffer.lookupTransform("map", "end_by", ros::Time(0));
-                }
-                catch (tf2::TransformException& ex)
-                {
-                    ROS_WARN("Control Get TF ERROR!");
-                    return;
-                }
-                end_by_pose[0] = base2plane.transform.translation.x;
-                end_by_pose[1] = base2plane.transform.translation.y;
-                end_by_pose[2] = base2plane.transform.translation.z;
-
-                target_world_pos[0] = start_by_pose[0];
-                target_world_pos[1] = start_by_pose[1];
-                target_world_pos[2] = start_by_pose[2];
-
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
-                mission_step = 104;
-            }
-            return;
-        }
-        if (mission_step == 104)
-        {
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
-            {
-                target_world_pos[0] = start_by_pose[0];
-                target_world_pos[1] = start_by_pose[1];
-                target_world_pos[2] = 190.0;
-                force_weak_power_mode = true;
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
-                mission_step = 105;
-            }
-            return;
-        }
-        if(mission_step == 105){
-            if (point_distance(target_world_pos, measure_world_pos) < 1.0)
-            {
-                target_world_pos[0] = end_by_pose[0];
-                target_world_pos[1] = end_by_pose[1];
-                target_world_pos[2] = 190.0;
-
-                nav_msgs::Path direct_path;
-                direct_path.header.stamp = ros::Time::now();
-                direct_path.header.frame_id = "map";
-
-                float d_pt = 5.0 / point_distance(target_world_pos, measure_world_pos);
-                // std::cout<<"d_pt:"<<d_pt << std::endl;
-                for(float i = 0.00; i <= 1.00; i = i + d_pt){
-                    geometry_msgs::PoseStamped path_point;
-                    path_point.pose.position.x = start_by_pose[0] + i * (end_by_pose[0] - start_by_pose[0]);
-                    path_point.pose.position.y = start_by_pose[1] + i * (end_by_pose[1] - start_by_pose[1]) - 750.0;
-                    path_point.pose.position.z = 190.0;
-                    path_point.pose.orientation.w = 1.0;
-                    direct_path.poses.push_back(path_point);
-                }
-
-                geometry_msgs::PoseStamped path_point;
-                path_point.pose.position.x = end_by_pose[0];
-                path_point.pose.position.y = end_by_pose[1] - 750.0;
-                path_point.pose.position.z = 190.0;
-                path_point.pose.orientation.w = 1.0;
-                direct_path.poses.push_back(path_point);
-
-                exe_path_publisher.publish(direct_path);
-
-                
-
-                mission_step = 601;
-                
-                tf_cmd[5] = NAN;
-            }else{
-                if (point_distance(measure_world_pos, start_by_pose) > 5.0){
-                    if(point_distance(measure_world_pos, target_world_pos) > 5.0){
-                        tf_cmd[3] = 0.0;
-                        tf_cmd[4] = 0.0;
-                        tf_cmd[5] = 4.0;
-                    }else{
-                        tf_cmd[5] = 0.0;
-                    }
-                }else{
-                    tf_cmd[5] = 0.0;
-                }
-                
-            }
-            return;
-        }
-        //prepare path
-        if (mission_step == 4)
-        {
-            std::cout<<"start pose "<<start_pose[0]<<", "<<start_pose[1]<<", "<<start_pose[2]<<std::endl;
-            std::cout<<"end pose "<<end_pose[0]<<", "<<end_pose[1]<<", "<<end_pose[2]<<std::endl;
-            float min_distance = 5000.0;
-            int i = 0;
-            int id = 0;
-
-            for (auto path = mission_path_list.begin(); path != mission_path_list.end(); path++)
-            {
-                i = i + 1;
-                float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
-                std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
-                std::cout<<"path"<<i<<" pose "<< path_begin_point[0]<<", "<< path_begin_point[1]<<", "<< path_begin_point[2] <<std::endl;
-                float current_distance = point_distance(start_pose, path_begin_point);
-                std::cout<<"current distance: "<< current_distance << std::endl;
-                
-                if (current_distance < min_distance)
-                {
-                    exe_path1 = path;
-                    min_distance = current_distance;
-                    id = i;
-                }
-                std::cout<<"min distance"<<min_distance<<std::endl;
-                
-            }
-            std::cout<<"go path id: "<<id<<std::endl;
-            start_id = id -1;
-            min_distance = 99999.0;
-            i = 0;
-            for (auto path = mission_path_list.begin(); path != mission_path_list.end(); path++)
-            {
-                i = i + 1;
-                std::cout<<std::endl<<"min distance"<<min_distance<<std::endl;
-                float path_begin_point[] = {path->front().position[0], path->front().position[1], path->front().position[2]};
-                float current_distance = point_distance(end_pose, path_begin_point);
-                if (current_distance < min_distance)
-                {
-                    exe_path2 = path;
-                    min_distance = current_distance;
-                    id = i;
-                }
-            }
-            std::cout<<"back path id: "<<id<<std::endl;
-            end_id = id -1;
-            mission_step = 5;
-            return;
-        }
-        if (mission_step == 501){
-            mission_path_1.header.stamp = ros::Time::now();
-            mission_path_1.header.frame_id = "map";
-        }
-        if (mission_step == 5)
-        {
-            mission_path_1.header.stamp = ros::Time::now();
-            mission_path_1.header.frame_id = "map";
-            mission_path_2.header.stamp = ros::Time::now();
-            mission_path_2.header.frame_id = "map";
-            for (auto point = exe_path1->begin(); point != exe_path1->end(); ++point)
-            {
-                geometry_msgs::PoseStamped path_point;
-                path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1] - 750.0;
-                path_point.pose.position.z = point->position[2];
-                mission_path_1.poses.push_back(path_point);
-            }
-            for (auto point = exe_path2->rbegin(); point != exe_path2->rend(); ++point)
-            {
-                geometry_msgs::PoseStamped path_point;
-                path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1] - 750.0;
-                path_point.pose.position.z = point->position[2];
-                mission_path_2.poses.push_back(path_point);
-            }
-
-            // geometry_msgs::PoseStamped path_point;
-            // path_point.pose.position.x = end_pose[0];
-            // path_point.pose.position.y = end_pose[1];
-            // path_point.pose.position.z = end_pose[2] + 1.5;
-            // mission_path_2.poses.push_back(path_point);
-
-            for (auto point = exe_path2->begin(); point != exe_path2->end(); ++point)
-            {
-                geometry_msgs::PoseStamped path_point;
-                path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1] - 750.0;
-                path_point.pose.position.z = point->position[2];
-                mission_path_3.poses.push_back(path_point);
-            }
-            for (auto point = exe_path1->rbegin(); point != exe_path1->rend(); ++point)
-            {
-                geometry_msgs::PoseStamped path_point;
-                path_point.pose.position.x = point->position[0];
-                path_point.pose.position.y = point->position[1] - 750.0;
-                path_point.pose.position.z = point->position[2];
-                mission_path_4.poses.push_back(path_point);
-            }
-
-            // path_point.pose.position.x = start_pose[0];
-            // path_point.pose.position.y = start_pose[1];
-            // path_point.pose.position.z = start_pose[2];
-            // mission_path_4.poses.push_back(path_point);
-
-            
-
-            exe_path_publisher.publish(mission_path_1);
-            target_world_pos[0] = mission_path_1.poses.back().pose.position.x;
-            target_world_pos[1] = mission_path_1.poses.back().pose.position.y + 750.0;
-            target_world_pos[2] = mission_path_1.poses.back().pose.position.z;
-            mission_step = 6;
-            return;
-        }
-        if (mission_step == 6)
-        {
-            if (point_distance(measure_world_pos, target_world_pos) < 1.0)
-            {
-                exe_path_publisher.publish(mission_path_2);
-                target_world_pos[0] = mission_path_2.poses.back().pose.position.x;
-                target_world_pos[1] = mission_path_2.poses.back().pose.position.y + 750.0;
-                target_world_pos[2] = mission_path_2.poses.back().pose.position.z;
-                mission_step = 601;
-            }
-            return;
-        }
-
-        if(mission_step == 601){
-            if (point_distance(target_world_pos, measure_world_pos) < 3.0)
-            {
-                target_world_pos[0] = end_by_pose[0];
-                target_world_pos[1] = end_by_pose[1];
-                target_world_pos[2] = end_by_pose[2];
-
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                mission_step = 602;
-
-                
-                offboard_disable = true;
-            }
-            return;
-        }
-        if (mission_step == 602)
-        {
-            target_world_pos[0] = end_by_pose[0];
-            target_world_pos[1] = end_by_pose[1];
-            target_world_pos[2] = end_by_pose[2];
-
-            tf_cmd[0] = target_world_pos[0];
-            tf_cmd[1] = target_world_pos[1];
-            tf_cmd[2] = target_world_pos[2];
-            tf_cmd[3] = NAN;
-            tf_cmd[4] = NAN;
-            tf_cmd[5] = NAN;
-            tf_cmd[6] = NAN;
-            tf_cmd[7] = NAN;
-            tf_cmd[8] = NAN;
-
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
-            {
-                target_world_pos[0] = end_pose[0];
-                target_world_pos[1] = end_pose[1];
-                target_world_pos[2] = end_pose[2] + 1.5;
-                force_weak_power_mode = false;
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
-                mission_step = 603;
-
-                
-                force_weak_power_mode = false;
-                offboard_disable = false;
-
-                std_msgs::Float32 limit_msg;
-                // limit_msg.data = 7.5;
-                // planner_acc_limit_publisher.publish(limit_msg);
-                
-                ros::NodeHandle pnh;
-                pnh.setParam("/drone_0_ego_planner_node/manager/max_acc", 5.0);
-                pnh.setParam("/drone_0_ego_planner_node/manager/max_vel", 30.0);
-                pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 5.0);
-                pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 30.0);
-                limit_msg.data = 35.0;
-                planner_vel_limit_publisher.publish(limit_msg);
-            }else{
-                if (measure_world_pos[2] < 190.0){
-                    if(measure_world_pos[2] > target_world_pos[2] + 5.0){
-                        tf_cmd[3] = 0.0;
-                        tf_cmd[4] = 0.0;
-                        tf_cmd[5] = -8.0;
-                    }else{
-                        tf_cmd[5] = 0.0;
-                    }
-                }else{
-                    tf_cmd[5] = 0.0;
-                }
-            }
-            return;
-        }
-        if (mission_step == 603)
-        {
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
-            {
-                target_world_pos[0] = end_by_pose[0];
-                target_world_pos[1] = end_by_pose[1];
-                target_world_pos[2] = end_by_pose[2];
-
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
-                mission_step = 604;
-                force_strong_power_mode = true;
-            }
-            return;
-        }
-        if (mission_step == 604)
-        {
-            if (point_distance(target_world_pos, measure_world_pos) < 2.5)
-            {
-                target_world_pos[0] = end_by_pose[0];
-                target_world_pos[1] = end_by_pose[1];
-                target_world_pos[2] = 190.0;
-
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
-                mission_step = 7;
-            }
-            return;
-        }
-
-        if(mission_step == 7){
-            if (point_distance(target_world_pos, measure_world_pos) < 0.5)
-            {
-                target_world_pos[0] = start_by_pose[0];
-                target_world_pos[1] = start_by_pose[1];
-                target_world_pos[2] = 190.0;
-
-                nav_msgs::Path direct_path;
-                direct_path.header.stamp = ros::Time::now();
-                direct_path.header.frame_id = "map";
-                float d_pt = 5.0 / point_distance(target_world_pos, measure_world_pos);
-                for(float i = 0.00; i <= 1.00; i = i + d_pt){
-                    geometry_msgs::PoseStamped path_point;
-                    path_point.pose.position.x = end_by_pose[0] + i * (start_by_pose[0] - end_by_pose[0]);
-                    path_point.pose.position.y = end_by_pose[1] + i * (start_by_pose[1] - end_by_pose[1]) - 750.0;
-                    path_point.pose.position.z = 190.0;
-                    path_point.pose.orientation.w = 1.0;
-                    direct_path.poses.push_back(path_point);
-                }
-
-                geometry_msgs::PoseStamped path_point;
-                path_point.pose.position.x = start_by_pose[0];
-                path_point.pose.position.y = start_by_pose[1] - 750.0;
-                path_point.pose.position.z = 190.0;
-                path_point.pose.orientation.w = 1.0;
-                direct_path.poses.push_back(path_point);
-                exe_path_publisher.publish(direct_path);
-
-                mission_step = 801;
-                tf_cmd[5] = NAN;
-
-            }else{
-                if (measure_world_pos[2] > end_by_pose[2] + 5.0){
-                    if(measure_world_pos[2] < target_world_pos[2] - 5.0){
-                        tf_cmd[3] = 0.0;
-                        tf_cmd[4] = 0.0;
-                        tf_cmd[5] = 10.0;
-                    }else{
-                        tf_cmd[5] = 0.0;
-                    }
-                }else{
-                    tf_cmd[5] = 0.0;
-                }
-                
-            }
-            return;
-        }
-        if(mission_step == 8){
-            if (point_distance(measure_world_pos, target_world_pos) < 3.0)
-            {
-                exe_path_publisher.publish(mission_path_4);
-                target_world_pos[0] = mission_path_4.poses.back().pose.position.x;
-                target_world_pos[1] = mission_path_4.poses.back().pose.position.y + 750.0;
-                target_world_pos[2] = mission_path_4.poses.back().pose.position.z;
-                mission_step = 801;
-                force_strong_power_mode = true;
-            }
-            return;
-        }
-        if(mission_step == 801){
-            if (point_distance(target_world_pos, measure_world_pos) < 5.0)
-            {
-
-                target_world_pos[0] = start_by_pose[0];
-                target_world_pos[1] = start_by_pose[1];
-                target_world_pos[2] = start_by_pose[2];
-
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
-                mission_step = 802;
-                offboard_disable = true;
-            }
-            return;
-        }
-        if (mission_step == 802)
-        {
-            
-            target_world_pos[0] = start_by_pose[0];
-            target_world_pos[1] = start_by_pose[1];
-            target_world_pos[2] = start_by_pose[2];
-
-            tf_cmd[0] = target_world_pos[0];
-            tf_cmd[1] = target_world_pos[1];
-            tf_cmd[2] = target_world_pos[2];
-
-            if (point_distance(target_world_pos, measure_world_pos) < 2.0)
-            {
-                target_world_pos[0] = start_pose[0];
-                target_world_pos[1] = start_pose[1];
-                target_world_pos[2] = start_pose[2] + 1.5;
-
-                tf_cmd[0] = target_world_pos[0];
-                tf_cmd[1] = target_world_pos[1];
-                tf_cmd[2] = target_world_pos[2];
-
-                tf_cmd[3] = NAN;
-                tf_cmd[4] = NAN;
-                tf_cmd[5] = NAN;
-                tf_cmd[6] = NAN;
-                tf_cmd[7] = NAN;
-                tf_cmd[8] = NAN;
-
-                tf_cmd[9] = measure_world_pos[3];
-
-                tf_cmd[10] = NAN;
-                tf_cmd[10] = NAN;
-                mission_step = 803;
-                offboard_disable = false;
-            }else{
-                if (point_distance(measure_world_pos, start_by_pose) > 5.0){
-                    if(point_distance(measure_world_pos, target_world_pos) > 5.0){
-                        tf_cmd[3] = 0.0;
-                        tf_cmd[4] = 0.0;
-                        tf_cmd[5] = 0.0;
-                    }else{
-                        tf_cmd[5] = 0.0;
-                    }
-                }else{
-                    tf_cmd[5] = 0.0;
-                }
-                
-            }
-        }
     }
 }

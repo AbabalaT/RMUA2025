@@ -26,6 +26,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 
 #include <nav_msgs/Odometry.h>
+#include <visualization_msgs/Marker.h>
 
 #endif //BASIC_CONTROL_HPP
 
@@ -67,6 +68,8 @@ private:
 	ros::Publisher pcl_enbale_publisher;
 
 	ros::Publisher exe_path_publisher;
+
+	ros::Publisher world_force_marker_publisher;
 
     ros::Timer rc_mode_timer;
     ros::Timer pwm_send_timer;

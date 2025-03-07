@@ -80,6 +80,17 @@ void get_orientation_by_pos(float& pose_x, float& pose_y, float& pose_z,
         float& quat_w, float& quat_x, float& quat_y, float& quat_z){
     float possible_pose[3];
     float require_pose[3];
+
+    double min = 9999;
+    double re_w;
+    double re_x;
+    double re_y;
+    double re_z;
+
+    double re_px;
+    double re_py;
+    double re_pz;
+
     require_pose[0] = pose_x;
     require_pose[1] = pose_y;
     require_pose[2] = pose_z;
@@ -87,134 +98,305 @@ void get_orientation_by_pos(float& pose_x, float& pose_y, float& pose_z,
     possible_pose[0] = 518.5;
     possible_pose[1] = 548.0;
     possible_pose[2] = 30.4;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
-        quat_y = 0.0;
-        quat_z = 0.8643983602523804;
-        quat_w = 0.5028076171875;
+    quat_x = 0.0;
+    quat_y = 0.0;
+    quat_z = 0.8643983602523804;
+    quat_w = 0.5028076171875;
+    if(point_distance(require_pose, possible_pose) < 25.0){
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];        
         return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = 401;
     possible_pose[1] = 263.3;
     possible_pose[2] = -0.02;
-    if(point_distance(require_pose, possible_pose) < 25.0){
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = 0.9949634075164795;
         quat_w = 0.10023844242095947;
+    if(point_distance(require_pose, possible_pose) < 25.0){
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];  
+        
         return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = 286.764332431464;
     possible_pose[1] = 142.55716002076377;
     possible_pose[2] = 8.072717666625977;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = 0.7445744276046753;
         quat_w = 0.6675394773483276;
+    if(point_distance(require_pose, possible_pose) < 25.0){  
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];        
+        
         return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = -102.9;
     possible_pose[1] = 1353.04;
     possible_pose[2] = 7.42;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
-        quat_z = 0.7053244709968567;
+        quat_z = -0.7053244709968567;
         quat_w = 0.7088846564292908;
+    if(point_distance(require_pose, possible_pose) < 25.0){    
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];      
+        
         return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = -288.20;
     possible_pose[1] = 0.31808;
     possible_pose[2] = 3.57;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = 0.6195170283317566;
         quat_w = 0.784983217716217;
+    if(point_distance(require_pose, possible_pose) < 25.0){       
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];   
+        
         return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = -731.47;
     possible_pose[1] = 713.26;
     possible_pose[2] = 14.86;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = 0.12704959511756897;
         quat_w = 0.991896390914917;
+    if(point_distance(require_pose, possible_pose) < 25.0){     
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];     
+        
         return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = -676.15;
     possible_pose[1] = 784.731;
     possible_pose[2] = 2.915;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = -0.5142592787742615;
         quat_w = 0.8576347231864929;
+    if(point_distance(require_pose, possible_pose) < 25.0){   
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];       
+        
         return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = -485.96;
     possible_pose[1] = 1033.42;
     possible_pose[2] = 57.4384;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = -0.022274643182754517;
         quat_w = 0.9997519254684448;
+    if(point_distance(require_pose, possible_pose) < 25.0){    
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];      
+        return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = -424.011;
     possible_pose[1] = 1176.75;
     possible_pose[2] = 77.45;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = -0.6547228097915649;
         quat_w = 0.7558690309524536;
+    if(point_distance(require_pose, possible_pose) < 25.0){  
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];        
+        return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = -103.57;
     possible_pose[1] = 1351.24;
     possible_pose[2] = 7.438;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = -0.6877499;
         quat_w = 0.7259476780891418;
+    if(point_distance(require_pose, possible_pose) < 25.0){
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];          
+        return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = 153.65715255718112;
     possible_pose[1] = 1327.5052453297249;
     possible_pose[2] = 35.30732774734497;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = -0.7883210182189941;
         quat_w = 0.6152640581130981;
+    if(point_distance(require_pose, possible_pose) < 25.0){  
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];        
+        return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
     possible_pose[0] = 539.6709;
     possible_pose[1] = 677.5449;
     possible_pose[2] = 47.6920;
-    if(point_distance(require_pose, possible_pose) < 25.0){        
-        quat_x = 0.0;
+    quat_x = 0.0;
         quat_y = 0.0;
         quat_z = -0.9067946672439575;
         quat_w = 0.42157256603240967;
+    if(point_distance(require_pose, possible_pose) < 25.0){  
+        pose_x = possible_pose[0];
+        pose_y = possible_pose[1];
+        pose_z = possible_pose[2];        
+        
+        return;
+    }
+    if(point_distance(require_pose, possible_pose) < min){
+        re_px = possible_pose[0];
+        re_py = possible_pose[1];
+        re_pz = possible_pose[2];
+        re_w = quat_w;
+        re_x = quat_x;
+        re_y = quat_y;
+        re_z = quat_z;
+        min = point_distance(require_pose, possible_pose);
     }
 
-    quat_w = 1.0;
-    quat_x = 0.0;
-    quat_y = 0.0;
-    quat_z = 0.0;
+    pose_x = re_px;
+    pose_y = re_py;
+    pose_z = re_pz;
+    quat_w = re_w;
+    quat_x = re_x;
+    quat_y = re_y;
+    quat_z = re_z;
     return;
 }
 
@@ -227,97 +409,45 @@ typedef struct
 
 float mahony_quaternion[4];
 
-typedef struct
-{
-    // 滤波器系数
-    double b0, b1, b2;
-    double a1, a2;
-
-    // 滤波器状态
-    double x1, x2; // 输入状态
-    double y1, y2; // 输出状态
-} ButterworthFilter;
-
-void initButterworthFilter(ButterworthFilter* filter, double sampleRate, double cutoffFreq)
-{
-    double omega_c = 2.0 * 3.14159265359 * cutoffFreq / sampleRate;
-    double alpha = sin(omega_c) / 2.0;
-
-    // 计算滤波器系数
-    double b0 = (1 - cos(omega_c)) / 2;
-    double b1 = 1 - cos(omega_c);
-    double b2 = (1 - cos(omega_c)) / 2;
-    double a0 = 1 + alpha;
-    double a1 = -2 * cos(omega_c);
-    double a2 = 1 - alpha;
-
-    // 归一化系数
-    filter->b0 = b0 / a0;
-    filter->b1 = b1 / a0;
-    filter->b2 = b2 / a0;
-    filter->a1 = a1 / a0;
-    filter->a2 = a2 / a0;
-
-    // 初始化状态
-    filter->x1 = 0;
-    filter->x2 = 0;
-    filter->y1 = 0;
-    filter->y2 = 0;
-}
-
-double applyButterworthFilter(ButterworthFilter* filter, double input)
-{
-    double output = filter->b0 * input + filter->b1 * filter->x1 + filter->b2 * filter->x2 - filter->a1 * filter->y1 -
-        filter->a2 * filter->y2;
-    filter->x2 = filter->x1;
-    filter->x1 = input;
-    filter->y2 = filter->y1;
-    filter->y1 = output;
-    return output;
-}
-
-class KalmanFilter {
+class ComplementaryFilter {
 public:
-    KalmanFilter() {
-        initButterworthFilter(&gps_pos_filter, 10.0, 3.0);
-        initButterworthFilter(&gps_vel_filter, 10.0, 2.5);
-
-        initButterworthFilter(&imu_pos_filter, 110.0, 15.0);
-        initButterworthFilter(&imu_vel_filter, 110.0, 12.0);
-
-        x(0) = 0.0;
-        x(1) = 0.0;
-
+    ComplementaryFilter() {
         inited = 0;
-        pre_acc = 0.0;
+        filter_alpha = 0.25;
+        filter_beta = 0.4;
     }
 
     void predict(double acceleration, ros::Time imu_stamp) {
-        double temp = pre_acc;
-        pre_acc = acceleration;
+        double temp = pre_imu;
+        pre_imu = acceleration;
         acceleration = 0.5 * (temp + acceleration);
-        if(inited < 5){
-            x(1) = 0.0;
+        if(inited < 10){
+            last_imu_stamp = imu_stamp;
             return;
         }
         double real_dt = (imu_stamp - last_imu_stamp).toSec();
+        x(1) = x(1) + acceleration * real_dt;
+        x(0) = x(0) + x(1) * real_dt + 0.5 * acceleration * real_dt * real_dt;
         last_imu_stamp = imu_stamp;
-
-        x(1) = applyButterworthFilter(&gps_vel_filter, x(1) + acceleration * real_dt);
-        x(0) = applyButterworthFilter(&gps_pos_filter, x(0) + x(1) * real_dt + 0.5 * acceleration * real_dt * real_dt);
     }
 
     void update(double position_measurement, ros::Time gps_stamp) {
-        if(inited < 5){
+        if(inited < 10){
             inited = inited + 1;
+            x(1) = 0.0;
+        }
+
+        if (inited <2)
+        {
+            last_gps_stamp = gps_stamp;
+            x(0) = position_measurement;
             return;
         }
         double real_dt = (gps_stamp - last_gps_stamp).toSec();
+        x(0) = (1.0 - filter_alpha) * x(0) + filter_alpha * position_measurement;
+        x(1) = (1.0 - filter_beta) * x(1) +  filter_beta * (x(0) - pre_gps) / real_dt;
+        pre_gps = x(0);
         last_gps_stamp = gps_stamp;
-
-        x(0) = applyButterworthFilter(&imu_pos_filter, position_measurement);
-        x(1) = applyButterworthFilter(&imu_vel_filter, (x(0) - pre_measurement) / real_dt);
-        pre_measurement = x(0);
     }
 
     Eigen::Vector2d getState() const {
@@ -325,19 +455,21 @@ public:
     }
 
 private:
-    int inited;
-    double pre_acc;
+    double filter_alpha;
+    double filter_beta;
+
+    double pre_imu;
+    double pre_gps;
+
     ros::Time last_gps_stamp;
     ros::Time last_imu_stamp;
-    ButterworthFilter gps_pos_filter;
-    ButterworthFilter gps_vel_filter;
-    ButterworthFilter imu_pos_filter;
-    ButterworthFilter imu_vel_filter;
-    double pre_measurement;
+
+    int inited;
+
     Eigen::Vector2d x;
 };
 
-std::vector<KalmanFilter> kalman_filters;
+std::vector<ComplementaryFilter> kalman_filters;
 
 Quaternion multiply_quaternion(Quaternion* q1, Quaternion* q2)
 {
@@ -764,6 +896,13 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
     trans.transform.translation.y = odom_msg.pose.pose.position.y;
     trans.transform.translation.z = odom_msg.pose.pose.position.z;
     br.sendTransform(trans);
+
+    trans.child_frame_id = "base_link_identity";
+    trans.transform.rotation.x = 0.0;
+    trans.transform.rotation.y = 0.0;
+    trans.transform.rotation.z = 0.0;
+    trans.transform.rotation.w = 1.0;
+    br.sendTransform(trans);
 }
 
 void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -801,11 +940,12 @@ void project2plane_callback(const ros::TimerEvent&)
     trans.child_frame_id = "real_end";
     trans.header.stamp = ros::Time::now();
 
+    
+
+    get_orientation_by_pos(end_pose_x, end_pose_y, end_pose_z, end_quat.w, end_quat.x, end_quat.y, end_quat.z);
     trans.transform.translation.x = end_pose_x;
     trans.transform.translation.y = end_pose_y;
     trans.transform.translation.z = end_pose_z;
-
-    get_orientation_by_pos(end_pose_x, end_pose_y, end_pose_z, end_quat.w, end_quat.x, end_quat.y, end_quat.z);
 
     trans.transform.rotation.x = end_quat.x;
     trans.transform.rotation.y = end_quat.y;
@@ -916,9 +1056,9 @@ int main(int argc, char** argv)
 
     outFile.open("/home/tc/route_point.route", std::ios::app);
 
-    kalman_filters.push_back(KalmanFilter());
-    kalman_filters.push_back(KalmanFilter());
-    kalman_filters.push_back(KalmanFilter());
+    kalman_filters.push_back(ComplementaryFilter());
+    kalman_filters.push_back(ComplementaryFilter());
+    kalman_filters.push_back(ComplementaryFilter());
     ros::spin();
 
     // route_cloud->width = route_cloud->points.size();
