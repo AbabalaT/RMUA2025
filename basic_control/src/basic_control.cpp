@@ -2482,7 +2482,7 @@ void BasicControl::scheduler_callback(const ros::TimerEvent& event)//4HZ 0.2s
                     pnh.setParam("/drone_0_ego_planner_node/manager/polyTraj_piece_length", 8.0);
                     pnh.setParam("/drone_0_ego_planner_node/optimization/max_acc", 8.0);
                     pnh.setParam("/drone_0_ego_planner_node/optimization/max_vel", 35.0);
-                    pnh.setParam("/drone_0_ego_planner_node/optimization/planning_horizon", 50.0);
+                    pnh.setParam("/drone_0_ego_planner_node/optimization/planning_horizon", 100.0);
                     limit_msg.data = 35.0;
                     planner_vel_limit_publisher.publish(limit_msg);
                 }

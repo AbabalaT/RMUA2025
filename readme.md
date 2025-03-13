@@ -1,49 +1,26 @@
-先把点云可视化出来  
-map->camera_init  
-camera_init->livox  
+## RMUA2025
+# Included repository
+1. ros-robot-localization  (not use now)  
+2. Ego-planner V2
+3. Fast-Lio (planned to be replaced)
 
-角速度环  
-角度环（Point-LIO）输出姿态  
-水平速度环
+# TODO
+- Optimize trajectory of some roads, make sure the feasibility
+- weak power detection
+- check drag force calculation (seemed not right)
 
-位置环  
-导航  
-识别
+# remote controll  
+1. roll  
+2. pitch  
+3. throttle  
+4. yaw  
 
-遥控器
+# Mode  
+- off-board (-1)  
+- disable (0)  
+- position (1)  
+- stable (2)  
+- acro (3)  
 
-
-遥控器  
-1. 横滚
-2. 俯仰
-3. 油门
-4. 偏航
-
-RosParam:是否遥控
-(default):0 也能用遥控拨杆设成0
-1. off-board
-2. position
-3. stable
-4. acro
-
-遥控程序启动后修改param
-其他程序作出反映
-
-TODO:
-    lidar imu 標定
-    imu 方差測量
-    lidar缩放比例标定
-
-FAST-LIO sensor set ros::time
-IMU sensor set ros::time 
-UWB Pose2Odom
-
-目标速度 x y z
-实际速度 x y z
-目标姿态 加重力加速度  
-change planner param  
-/exe/vel_limit
-/exe/acc_limit  
-  
-all the point in world frame can only be put in nav::path  
-nav::path is in world axis  
+default: -1  
+the rc node will set mode param and advertise float32 topic
